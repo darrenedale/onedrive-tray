@@ -5,6 +5,7 @@
 #include <iostream>
 #include <QtCore/QLatin1String>
 #include <QtCore/QLocale>
+#include <QtCore/QProcess>
 #include <QtCore/QCommandLineParser>
 #include <QtWidgets/QSystemTrayIcon>
 #include <QtWidgets/QMessageBox>
@@ -27,7 +28,11 @@ Application::Application(int & argc, char ** argv)
           m_window(),
           m_qtTranslator(),
           m_appTranslator(),
-          m_trayIcon(std::make_unique<QSystemTrayIcon>())
+          m_trayIcon(std::make_unique<QSystemTrayIcon>()),
+          m_trayIconMenu(std::make_unique<QMenu>()),
+          m_statusAction(std::make_unique<QAction>(tr("Not started"))),
+          m_freeSpaceAction(std::make_unique<QAction>(tr("Free space: "))),
+          m_oneDriveProcess(std::make_unique<QProcess>())
 {
     setAttribute(Qt::AA_UseHighDpiPixmaps);
     setOrganizationDomain(QLatin1String("dev.equit"));
@@ -64,6 +69,14 @@ Application::Application(int & argc, char ** argv)
     m_oneDrivePath = parser.value(onedrivePathOption);
     m_oneDriveArgs = parser.value(onedriveArgsOption);
 
+    if (m_oneDrivePath.isEmpty()) {
+        m_oneDrivePath = QLatin1String("/usr/bin/onedrive");
+    }
+
+    if (m_oneDriveArgs.isEmpty()) {
+        m_oneDriveArgs = QLatin1String("--verbose --monitor");
+    }
+
     setQuitOnLastWindowClosed(false);
     m_window = std::make_unique<Window>();
 }
@@ -94,7 +107,7 @@ const QString & Application::oneDriveArgs() const
     return m_oneDriveArgs;
 }
 
-void Application::showNotification(const QString & message, int timeout, OneDrive::Application::NotificationType type)
+void Application::showNotification(const QString & message, int timeout, OneDrive::Application::NotificationType type) const
 {
     QMessageBox::StandardButton (* messageFunction)(QWidget *, const QString &, const QString &, QMessageBox::StandardButtons, QMessageBox::StandardButton);
 
@@ -134,24 +147,22 @@ void Application::showAboutDialogue() const
 
 void Application::createTrayIconMenu()
 {
-    auto * freeSpaceAction = new QAction(tr("Free space: "), this);
-    freeSpaceAction->setDisabled(true);
-
-    auto * statusAction = new QAction(tr("Not started"), this);
-    statusAction->setDisabled(true);
+    // these are just labels containing status info
+    m_freeSpaceAction->setDisabled(true);
+    m_statusAction->setDisabled(true);
 
     auto * consoleAction = new QAction(tr("&Recent events"), this);
-    connect(consoleAction, &QAction::triggered, this, &QWidget::showNormal);
+    connect(consoleAction, &QAction::triggered, m_window.get(), &QWidget::showNormal);
 
-    auto * openfolderAction = new QAction(tr("&Open OneDrive folder"), this);
-    connect(openfolderAction, &QAction::triggered, this, &Window::openFolder);
+    auto * openLocalDirectory = new QAction(tr("&Open OneDrive folder"), this);
+    connect(openLocalDirectory, &QAction::triggered, this, &Application::openLocalDirectory);
 
     auto * restartAction = new QAction(tr("&Restart the synchronization"), this);
-    connect(restartAction, &QAction::triggered, this, &Window::restart);
-    auto * restartAction->setVisible(false);
+    connect(restartAction, &QAction::triggered, this, &Application::restart);
+    restartAction->setVisible(false);
 
     auto * suspendAction = new QAction(tr("&Suspend the synchronization"), this);
-    connect(suspendAction, &QAction::triggered, this, &Window::suspend);
+    connect(suspendAction, &QAction::triggered, this, &Application::suspend);
 
     auto * iconColorGroup = new QActionGroup(this);
 
@@ -171,45 +182,42 @@ void Application::createTrayIconMenu()
         setTrayIconStyle(IconStyle::colourful);
     });
 
-    quitAction = new QAction(tr("&Quit OneDrive"), this);
-    connect(quitAction, &QAction::triggered, this, &Window::quit);
+    auto * quitAction = new QAction(tr("&Quit OneDrive"), this);
+    connect(quitAction, &QAction::triggered, this, &Application::quit);
 
-    aboutAction = new QAction(tr("&About OneDrive"), this);
-    connect(aboutAction, &QAction::triggered, oneDriveApp, &Application::showAboutDialogue);
+    auto * aboutAction = new QAction(tr("&About OneDrive"), this);
+    connect(aboutAction, &QAction::triggered, this, &Application::showAboutDialogue);
 
-    auto * trayIconMenu = new QMenu(m_trayIcon.get());
+    m_trayIconMenu->addAction(m_freeSpaceAction.get());
+    m_trayIconMenu->addAction(m_statusAction.get());
+    m_trayIconMenu->addSeparator();
 
-    trayIconMenu->addAction(freeSpaceAction);
-    trayIconMenu->addAction(statusAction);
-    trayIconMenu->addSeparator();
+    m_trayIconMenu->addAction(consoleAction);
+    m_trayIconMenu->addAction(openLocalDirectory);
+    m_trayIconMenu->addAction(restartAction);
+    m_trayIconMenu->addAction(suspendAction);
+    m_trayIconMenu->addSeparator();
 
-    trayIconMenu->addAction(consoleAction);
-    trayIconMenu->addAction(openfolderAction);
-    trayIconMenu->addAction(restartAction);
-    trayIconMenu->addAction(suspendAction);
-    trayIconMenu->addSeparator();
-
-    QMenu* submenuColor = trayIconMenu->addMenu(tr("Icon style"));
+    QMenu * submenuColor = m_trayIconMenu->addMenu(tr("Icon style"));
     submenuColor->addActions(iconColorGroup->actions());
 
-    trayIconMenu->addSeparator();
-    trayIconMenu->addAction(quitAction);
-    trayIconMenu->addAction(aboutAction);
+    m_trayIconMenu->addSeparator();
+    m_trayIconMenu->addAction(quitAction);
+    m_trayIconMenu->addAction(aboutAction);
 
-    trayIcon = new QSystemTrayIcon(this);
-    refreshTrayIcon(true, false);
+    refreshTrayIcon();
 
-    trayIcon->setContextMenu(trayIconMenu);
-    trayIcon->show();
+    m_trayIcon->setContextMenu(m_trayIconMenu.get());
+    m_trayIcon->show();
 
-    connect(trayIcon, &QSystemTrayIcon::activated, this, &Window::iconActivated);
+    connect(m_trayIcon.get(), &QSystemTrayIcon::activated, this, &Application::trayIconActivated);
 }
 
 void Application::setTrayIconStyle(IconStyle style)
 {
     settings.iconStyle = style;
     saveSettings();
-    refreshTrayIcon(true, false);
+    refreshTrayIcon();
 }
 
 void Application::saveSettings() const
@@ -282,14 +290,11 @@ void Application::refreshTrayIcon()
 
 const QString & Application::oneDriveConfigFile() const
 {
-    static QString path;
-
-    if (path.isNull()) {
-        path =
-    }
+    static QString path = locateOneDriveConfigFile();
+    return path;
 }
 
-QString Application::determineOneDriveConfigFile()
+QString Application::locateOneDriveConfigFile() const
 {
     QStringList args = oneDriveArgs().split(QRegularExpression(" +"));
     auto it = std::find(args.cbegin(), args.cend(), QStringLiteral("--confdir"));
@@ -299,21 +304,200 @@ QString Application::determineOneDriveConfigFile()
         path = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + DefaultOneDriveConfigFile;
     } else {
         ++it;
-        path = *it;
+        path = expandHomeShortcut(*it);
+    }
 
-        if (path.startsWith(QLatin1String("~/"))) {
-            path.replace(0, 1, QDir::homePath());
-        } else if (path.startsWith(QLatin1String("$HOME/"))) {
-            path.replace(0, 5, QDir::homePath());
-        } else if (path.startsWith(QLatin1String("${HOME}/"))) {
-            path.replace(0, 7, QDir::homePath());
+    QSettings oneDriveConfig(path, QSettings::IniFormat);
+    return expandHomeShortcut(oneDriveConfig.value("sync_dir", QDir::homePath() + "/OneDrive").toString());
+}
+
+void Application::openLocalDirectory() const
+{
+    static QString path = oneDriveConfigFile();
+
+    if (path.isEmpty()) {
+        showNotification(tr("The path for the local OneDrive directory is not defined."));
+        return;
+    }
+
+    // Open the folder
+    auto * openFolderProcess = new QProcess();
+    openFolderProcess->start("xdg-open", {path});
+    connect(openFolderProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), openFolderProcess, &QProcess::deleteLater);
+}
+
+int Application::exec()
+{
+    m_oneDriveProcess->setProgram(oneDrivePath());
+    m_oneDriveProcess->setArguments(oneDriveArgs().split(' ', Qt::SkipEmptyParts));
+
+    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardOutput, this, &Application::readProcessOutput);
+    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardError, this, &Application::readProcessError);
+    m_oneDriveProcess->start();
+    return QApplication::exec();
+}
+
+Application::ProcessMessage Application::parseProcessOutputLine(const QByteArray & line)
+{
+    ProcessMessage message;
+
+    if (line.toLower().contains("remaining free space")) {
+        message.type = ProcessMessageType::FreeSpace;
+
+        if (auto match = QRegularExpression("([0-9]+)").match(line); match.hasMatch()) {
+            message.size = match.captured(1).toLongLong();
         }
+    } else if (line.contains("Sync with OneDrive is complete")) {
+        message.type = ProcessMessageType::Finished;
+    } else if (line.contains("Monitored directory removed")) {
+        message.type = ProcessMessageType::LocalRootDirectoryRemoved;
+    } else if (line.left(26) == "Creating local directory: ") {
+        message.type = ProcessMessageType::CreateLocalDir;
+        message.destination = line.right(line.size() - 26);
+    } else if (line.left(42) == "Successfully created the remote directory ") {
+        message.type = ProcessMessageType::CreateRemoteDir;
+        // Remove " on OneDrive" at the end
+        message.destination = line.mid(42, line.size() - 54);
+    } else if (line.left(7) == "Moving ") {
+        message.type = ProcessMessageType::Rename;
 
-        // TODO read the config file and locate the local directory
+        if (const auto match = QRegularExpression("^Moving (.+) to (.+)$").match(line); match.hasMatch()) {
+            message.source = match.captured(1);
+            message.destination = match.captured(2);
+        }
+    } else if (auto match = QRegularExpression("(Downloading (?:new |modified)?file|Uploading (?:new |modified )?file|Deleting item)").match(line); match.hasMatch()) {
+        const auto type = match.captured(1);
+
+        if (type == "Deleting item") {
+            message.type = ProcessMessageType::Delete;
+
+            if (match = QRegularExpression("(?: item from OneDrive:| item) (.+)$").match(line); match.hasMatch()) {
+                message.destination = match.captured(1);
+            }
+        } else if (type.contains("Uploading")) {
+            message.type = ProcessMessageType::Upload;
+
+            if (match = QRegularExpression(R"((?:Uploading (?:new |modified )?file) (.+) \.\.\.)").match(line); match.hasMatch()) {
+                auto fileName = match.captured(1);
+
+                if (fileName.endsWith(" ...")) {
+                    fileName.truncate(fileName.size() - 4);
+                }
+
+                message.destination = fileName;
+            }
+        } else if (line.contains("Downloading")) {
+            message.type = ProcessMessageType::Download;
+
+            if (match = QRegularExpression(R"((?:Downloading (?:new |modified )?file) (.+) \.\.\.)").match(line); match.hasMatch()) {
+                auto fileName = match.captured(1);
+
+                if (fileName.endsWith(" ...")) {
+                    fileName.truncate(fileName.size() - 4);
+                }
+
+                message.destination = fileName;
+            }
+        }
+    }
+
+    return message;
+}
+
+void Application::readProcessOutput()
+{
+    static QByteArray buffer;
+
+    if (SyncState::Syncing != state()) {
+        m_state = SyncState::Syncing;
+        m_statusAction->setText(tr("Synchronizing..."));
+        refreshTrayIcon();
+    }
+
+    buffer += m_oneDriveProcess->readAllStandardOutput();
+
+    for (const QByteArray & line : buffer.split('\n')) {
+        const auto message = parseProcessOutputLine(line);
+
+        switch (message.type) {
+            case ProcessMessageType::Unknown:
+                break;
+
+            case ProcessMessageType::FreeSpace:
+                m_state = SyncState::Idle;
+                m_statusAction->setText(tr("Sync complete"));
+                m_freeSpaceAction->setText(tr("Free space: %1").arg( QLocale::system().formattedDataSize(static_cast<qint64>(message.size), 2, QLocale::DataSizeTraditionalFormat)));
+                refreshTrayIcon();
+                Q_EMIT freeSpaceUpdated(message.size);
+                Q_EMIT syncComplete();
+                break;
+
+            case ProcessMessageType::Finished:
+                m_state = SyncState::Idle;
+                m_statusAction->setText(tr("Sync complete"));
+                refreshTrayIcon();
+                Q_EMIT syncComplete();
+                break;
+
+            case ProcessMessageType::LocalRootDirectoryRemoved:
+                m_state = SyncState::Idle;
+                m_statusAction->setText(tr("Sync complete"));
+                refreshTrayIcon();
+                Q_EMIT localRootDirectoryRemoved();
+                break;
+
+            case ProcessMessageType::CreateLocalDir:
+                m_statusAction->setText(tr("Local directory %1 created").arg(message.destination));
+                Q_EMIT localDirectoryCreated(message.destination);
+                break;
+
+            case ProcessMessageType::CreateRemoteDir:
+                m_statusAction->setText(tr("Remote directory %1 created").arg(message.destination));
+                Q_EMIT remoteDirectoryCreated(message.destination);
+                break;
+
+            case ProcessMessageType::Delete:
+                m_statusAction->setText(tr("File %1 deleted").arg(message.destination));
+                Q_EMIT fileDeleted(message.destination);
+                break;
+
+            case ProcessMessageType::Rename:
+                m_statusAction->setText(tr("File %1 renamed as %2").arg( message.source, message.destination));
+                Q_EMIT fileRenamed(message.source, message.destination);
+                break;
+
+            case ProcessMessageType::Upload:
+                Q_EMIT fileUploaded(message.destination);
+                break;
+
+            case ProcessMessageType::Download:
+                Q_EMIT fileDownloaded(message.destination);
+                break;
+        }
+    }
+
+    if (const int lastLineEnd = buffer.lastIndexOf('\n'); 0 <= lastLineEnd) {
+        buffer = buffer.right(buffer.size() - lastLineEnd);
+    } else {
+        buffer.clear();
     }
 }
 
-void Application::openLocalDirectory()
+void Application::readProcessError()
 {
+//    QByteArray strdata = m_oneDriveProcess->readAllStandardError();
+//    eventsError(QString(strdata));
+}
 
+QString Application::expandHomeShortcut(const QString & path)
+{
+    if (path.startsWith(QLatin1String("~/"))) {
+        return QString(path).replace(0, 1, QDir::homePath());
+    } else if (path.startsWith(QLatin1String("$HOME/"))) {
+        QString(path).replace(0, 5, QDir::homePath());
+    } else if (path.startsWith(QLatin1String("${HOME}/"))) {
+        QString(path).replace(0, 7, QDir::homePath());
+    }
+
+    return path;
 }

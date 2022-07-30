@@ -10,15 +10,10 @@
 
 QT_BEGIN_NAMESPACE
 class QAction;
-
 class QActionGroup;
-
 class QCheckBox;
-
 class QGroupBox;
-
 class QMenu;
-
 QT_END_NAMESPACE
 
 namespace OneDrive
@@ -37,24 +32,10 @@ namespace OneDrive
 
         void iconActivated(QSystemTrayIcon::ActivationReason reason);
 
-        void readStdOutput();
-
-        void readStdError();
-
-        void setTrayIconStyle(const IconStyle &);
-
     private:
         void createIconGroupBox();
 
         void createMessageGroupBox();
-
-        void createActions();
-
-        void createTrayIcon();
-
-        void execute(QString onedrive_path, QString onedrive_arguments);
-
-        void openFolder();
 
         void restart();
 
@@ -63,8 +44,6 @@ namespace OneDrive
         void refreshTrayIcon(bool forceChange, bool sync);
 
         void quit();
-
-        void about();
 
         void loadSettings();
 
@@ -76,37 +55,25 @@ namespace OneDrive
 
         void eventsOperation(QString Operation, QString fileName);
 
-        struct AppConfiguration
+        struct WindowSettings
         {
-            IconStyle iconStyle = IconStyle::colourful;
             QSize size;
             QPoint pos;
         };
 
         bool auto_hide;
-        bool isSyncing;
 
         QCheckBox * showIconCheckBox;
-        QProcess * process;
+        QProcess * m_oneDriveProcess;
 
         QGroupBox * messageGroupBox;
         QPlainTextEdit * events;
-        QString * stdOutputString;
 
-        QAction * freeSpaceAction;
         QAction * statusAction;
-        QAction * consoleAction;
-        QAction * openfolderAction;
         QAction * restartAction;
         QAction * suspendAction;
-        QActionGroup * iconColorGroup;
-        QAction * quitAction;
-        QAction * aboutAction;
 
-        QSystemTrayIcon * trayIcon;
-        QMenu * trayIconMenu;
-
-        AppConfiguration appConfig;
+        WindowSettings m_settings;
     };
 }
 

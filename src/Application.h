@@ -16,6 +16,9 @@
 
 QT_BEGIN_NAMESPACE
 class QSystemTrayIcon;
+class QMenu;
+class QAction;
+class QProcess;
 QT_END_NAMESPACE
 
 namespace OneDrive
@@ -50,9 +53,9 @@ namespace OneDrive
 
         void showAboutDialogue() const;
 
-        void showNotification(const QString & message, int timeout = DefaultNotificationTimeout, NotificationType type = NotificationType::Message);
+        void showNotification(const QString & message, int timeout = DefaultNotificationTimeout, NotificationType type = NotificationType::Message) const;
 
-        inline void showNotification(const QString & message, NotificationType type)
+        inline void showNotification(const QString & message, NotificationType type) const
         {
             showNotification(message, DefaultNotificationTimeout, type);
         }
@@ -77,17 +80,59 @@ namespace OneDrive
 
         const QString & oneDriveConfigFile() const;
 
+        void openLocalDirectory() const;
+        int exec();
+
+    Q_SIGNALS:
+        void syncComplete();
+        void localRootDirectoryRemoved();
+        void freeSpaceUpdated(uint64_t bytes);
+        void fileUploaded(const QString & fileName);
+        void fileDownloaded(const QString & fileName);
+        void localDirectoryCreated(const QString & dirName);
+        void remoteDirectoryCreated(const QString & dirName);
+        void fileRenamed(const QString & from, const QString & to);
+        void fileDeleted(const QString & fileName);
+
     private:
         struct Settings
         {
             IconStyle iconStyle = IconStyle::colourful;
         };
 
-        QString determineOneDriveConfigFile() const;
+        enum class ProcessMessageType
+        {
+            Unknown = 0,
+            FreeSpace,
+            Finished,
+            LocalRootDirectoryRemoved,
+            CreateLocalDir,
+            CreateRemoteDir,
+            Rename,
+            Delete,
+            Upload,
+            Download,
+        };
+
+        struct ProcessMessage
+        {
+            ProcessMessageType type = ProcessMessageType::Unknown;
+            uint64_t size = 0;
+            QString source;
+            QString destination;
+        };
+
+        static ProcessMessage parseProcessOutputLine(const QByteArray & line);
+
+        QString locateOneDriveConfigFile() const;
+
+        static QString expandHomeShortcut(const QString & path);
 
         void refreshTrayIcon();
         void createTrayIconMenu();
         void installTranslators();
+        void readProcessOutput();
+        void readProcessError();
 
         SyncState m_state;
         Settings settings;
@@ -95,6 +140,10 @@ namespace OneDrive
         QString m_oneDriveArgs;
         std::unique_ptr<Window> m_window;
         std::unique_ptr<QSystemTrayIcon> m_trayIcon;
+        std::unique_ptr<QMenu> m_trayIconMenu;
+        std::unique_ptr<QAction> m_statusAction;
+        std::unique_ptr<QAction> m_freeSpaceAction;
+        std::unique_ptr<QProcess> m_oneDriveProcess;
 
         QTranslator m_qtTranslator;
         QTranslator m_appTranslator;
