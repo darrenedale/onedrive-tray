@@ -10,17 +10,17 @@
 #include <QApplication>
 #include <QTranslator>
 
-class Window;
 
 namespace OneDrive
 {
+    class Window;
 
     using RuntimeException = std::runtime_error;
 
     class Application
             : public QApplication
     {
-Q_OBJECT
+    Q_OBJECT
 
     public:
         enum class NotificationType
@@ -33,10 +33,12 @@ Q_OBJECT
         static const int DefaultNotificationTimeout = 5000;
         static const int NoNotificationTimeout = 0;
 
-        Application(int &argc, char **argv);
+        Application(int & argc, char ** argv);
+
         ~Application() noexcept override;
 
         [[nodiscard]] const QString & oneDrivePath() const;
+
         [[nodiscard]] const QString & oneDriveArgs() const;
 
         void showNotification(const QString & message, int timeout = DefaultNotificationTimeout, NotificationType type = NotificationType::Message);

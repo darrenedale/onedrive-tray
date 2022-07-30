@@ -14,7 +14,7 @@
 
 using namespace OneDrive;
 
-Application::Application(int &argc, char **argv)
+Application::Application(int & argc, char ** argv)
         : QApplication(argc, argv),
           m_oneDrivePath(),
           m_oneDriveArgs(),
@@ -87,9 +87,9 @@ const QString & Application::oneDriveArgs() const
     return m_oneDriveArgs;
 }
 
-void Application::showNotification(const QString &message, int timeout, OneDrive::Application::NotificationType type)
+void Application::showNotification(const QString & message, int timeout, OneDrive::Application::NotificationType type)
 {
-    QMessageBox::StandardButton (*messageFunction)(QWidget *, const QString &,const QString &, QMessageBox::StandardButtons, QMessageBox::StandardButton);
+    QMessageBox::StandardButton (* messageFunction)(QWidget *, const QString &, const QString &, QMessageBox::StandardButtons, QMessageBox::StandardButton);
 
     switch (type) {
         case NotificationType::Message:

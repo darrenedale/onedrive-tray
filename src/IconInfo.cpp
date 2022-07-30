@@ -4,9 +4,15 @@
 #include <QPainter>
 #include "IconInfo.h"
 
-IconInfo::IconInfo(QObject* parent) : QObject(parent) {}
+using namespace OneDrive;
 
-IconInfo::~IconInfo(){}
+IconInfo::IconInfo(QObject * parent) : QObject(parent)
+{
+}
+
+IconInfo::~IconInfo()
+{
+}
 
 const QString IconInfo::m_onedriveIconPathName = QString(":/images/OneDrive.png");
 
@@ -20,7 +26,7 @@ QStringList IconInfo::defaultColorsText()
 
 QVector<QColor> IconInfo::defaultColors()
 {
-    QVector<QColor> result {Qt::blue, Qt::white, Qt::red, Qt::green, Qt::black};
+    QVector<QColor> result{Qt::blue, Qt::white, Qt::red, Qt::green, Qt::black};
     return result;
 }
 
@@ -34,7 +40,7 @@ QString IconInfo::syncingOnedriveIconPathName()
     return m_syncingOnedriveIconPathName;
 }
 
-QPixmap IconInfo::changeColorIcon(const QString &imageName, const QColor &color)
+QPixmap IconInfo::changeColorIcon(const QString & imageName, const QColor & color)
 {
     QPixmap pixmap(imageName);
     QPainter painter(&pixmap);

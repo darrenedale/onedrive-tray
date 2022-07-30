@@ -7,8 +7,10 @@
 #include "IconInfo.h"
 #include "MoreColoursDialogue.h"
 
+using namespace OneDrive;
+
 // TO DO : ajouter le parent
-MoreColoursDialogue::MoreColoursDialogue(const QColor &defaultColor)
+MoreColoursDialogue::MoreColoursDialogue(const QColor & defaultColor)
 // Dialog box to choose the color of the icon
 {
     setWindowTitle(tr("More colors"));
@@ -26,29 +28,29 @@ MoreColoursDialogue::MoreColoursDialogue(const QColor &defaultColor)
     colorDlg->setCustomColor(5, Qt::yellow);
     colorDlg->setCustomColor(6, Qt::cyan);
     connect(colorDlg, &QColorDialog::currentColorChanged, this, &MoreColoursDialogue::currentColorChanged);
-    
+
     iconButton = new QToolButton;
     iconButton->setIconSize(QSize(128, 128));
     iconButton->setIcon(IconInfo::changeColorIcon(IconInfo::syncingOnedriveIconPathName(), defaultColor));
 
-    QHBoxLayout *hLayout = new QHBoxLayout;
+    QHBoxLayout * hLayout = new QHBoxLayout;
     hLayout->addWidget(colorDlg);
     hLayout->addWidget(iconButton);
-    QGroupBox *groupBox = new QGroupBox(tr("Color your clouds..."));
+    QGroupBox * groupBox = new QGroupBox(tr("Color your clouds..."));
     groupBox->setLayout(hLayout);
 
-    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QDialogButtonBox * buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    
-    QVBoxLayout *vLayout = new QVBoxLayout;
+
+    QVBoxLayout * vLayout = new QVBoxLayout;
     vLayout->addWidget(groupBox);
     vLayout->addWidget(buttonBox);
     vLayout->setSizeConstraint(QLayout::SetFixedSize); // Prevent resizing the window
     setLayout(vLayout);
 }
 
-void MoreColoursDialogue::currentColorChanged(const QColor &color)
+void MoreColoursDialogue::currentColorChanged(const QColor & color)
 // Slot function called when the user selects a new color
 {
     iconButton->setIcon(IconInfo::changeColorIcon(IconInfo::syncingOnedriveIconPathName(), color));

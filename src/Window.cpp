@@ -1,8 +1,6 @@
 #include "Window.h"
 #include "SettingsWindow.h"
 
-#ifndef QT_NO_SYSTEMTRAYICON
-
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
@@ -22,6 +20,8 @@
 #include "IconInfo.h"
 #include "MoreColoursDialogue.h"
 
+using namespace OneDrive;
+
 Window::Window(QString onedrive_path, QString onedrive_arguments)
 // Create the window
 {
@@ -29,9 +29,9 @@ Window::Window(QString onedrive_path, QString onedrive_arguments)
     // in another parts of the program.
     arguments = &onedrive_arguments;
     path = &onedrive_path;
-    
+
     ConfigurationWindow = new SettingsWindow;
-    
+
     // Used to show the window in odd clicks and hide in even.
     auto_hide = true;
     // Used to know if OneDrive is syncing or not
@@ -39,19 +39,20 @@ Window::Window(QString onedrive_path, QString onedrive_arguments)
 
     // Load the settings of the application
     loadSettings();
-    
+
     createMessageGroupBox();
     createActions();
     createTrayIcon();
 
-    QVBoxLayout *mainLayout = new QVBoxLayout;
+    QVBoxLayout * mainLayout = new QVBoxLayout;
     mainLayout->addWidget(messageGroupBox);
     setLayout(mainLayout);
 
     setWindowTitle(tr("Recent events"));
     resize(appConfig->size);
-    if (!appConfig->pos.isNull())
+    if (!appConfig->pos.isNull()) {
         move(appConfig->pos);
+    }
 
     execute(onedrive_path, onedrive_arguments);
     eventsInfo(tr("OneDrive started"));
@@ -62,11 +63,13 @@ void Window::execute(QString onedrive_path, QString onedrive_arguments)
 {
     process = new QProcess();
 
-    if (onedrive_path.isEmpty())
-	    onedrive_path = QString("onedrive");
+    if (onedrive_path.isEmpty()) {
+        onedrive_path = QString("onedrive");
+    }
 
-    if (onedrive_arguments.isEmpty())
-	    onedrive_arguments = QString("--verbose --monitor");
+    if (onedrive_arguments.isEmpty()) {
+        onedrive_arguments = QString("--verbose --monitor");
+    }
 
     qDebug() << "Selected onedrive path: " << onedrive_path;
     qDebug() << "Selected onedrive args: " << onedrive_arguments;
@@ -81,8 +84,8 @@ void Window::execute(QString onedrive_path, QString onedrive_arguments)
 
     process->start();
 
-    QObject::connect(process, SIGNAL(readyReadStandardOutput()),this, SLOT(readStdOutput()) );
-    QObject::connect(process, SIGNAL(readyReadStandardError()),this, SLOT(readStdError()) );
+    QObject::connect(process, SIGNAL(readyReadStandardOutput()), this, SLOT(readStdOutput()));
+    QObject::connect(process, SIGNAL(readyReadStandardError()), this, SLOT(readStdError()));
 }
 
 void Window::openFolder()
@@ -96,25 +99,26 @@ void Window::openFolder()
     QStringList arguments01 = arguments->split(QRegularExpression("[ =]"), Qt::SkipEmptyParts);
 #endif
     int index = arguments01.indexOf("--confdir", 0) + 1;
-    if (index > 0){
+    if (index > 0) {
         onedriveConfigFileName = arguments01[index] + "/config";
-        if (onedriveConfigFileName.indexOf("~/") == 0)
+        if (onedriveConfigFileName.indexOf("~/") == 0) {
             onedriveConfigFileName.replace(0, 1, QDir::homePath());
-    }
-    else
+        }
+    } else {
         onedriveConfigFileName = QDir::homePath() + "/.config/onedrive/config";
-    
+    }
+
     // Extract the onedrive folder in the config file.
     QSettings settings(onedriveConfigFileName, QSettings::IniFormat);
     QString syncDirString = settings.value("sync_dir", "~/OneDrive").toString();
-    if (!syncDirString.isEmpty())
-    {
+    if (!syncDirString.isEmpty()) {
         // Replace ~/ by home user directory
-        if (syncDirString.indexOf("~/") == 0)
+        if (syncDirString.indexOf("~/") == 0) {
             syncDirString.replace(0, 1, QDir::homePath());
+        }
         // Open the folder
-        QProcess *openFolderProcess = new QProcess(this);
-        openFolderProcess->start("xdg-open", QStringList()<<syncDirString);
+        QProcess * openFolderProcess = new QProcess(this);
+        openFolderProcess->start("xdg-open", QStringList() << syncDirString);
     }
 }
 
@@ -125,7 +129,7 @@ void Window::suspend()
     process->waitForFinished(); // Wait for process finish
     restartAction->setVisible(true);
     suspendAction->setVisible(false);
-    isSyncing =false;
+    isSyncing = false;
     changeTrayIcon(true, false);
 
     statusAction->setText(tr("Synchronization suspended"));
@@ -142,7 +146,7 @@ void Window::restart()
     eventsInfo(tr("Synchronization restarted"));
 }
 
-void Window::defineTrayIcon(const QColor &color)
+void Window::defineTrayIcon(const QColor & color)
 // Slot function to define the icon of the tray icon
 {
     appConfig->iconColor = color;
@@ -152,9 +156,8 @@ void Window::defineTrayIcon(const QColor &color)
 void Window::moreColors()
 // Slot function to show the more colors window
 {
-    MoreColoursDialogue *mcd = new MoreColoursDialogue(appConfig->iconColor);
-    if (mcd->exec())
-    {
+    MoreColoursDialogue * mcd = new MoreColoursDialogue(appConfig->iconColor);
+    if (mcd->exec()) {
         appConfig->iconColor = mcd->colorValidated();
         changeTrayIcon(true, false);
     }
@@ -178,18 +181,16 @@ void Window::readStdOutput()
 {
     bool syncCompleted(false);
 
-    if (!isSyncing)
-    {
+    if (!isSyncing) {
         statusAction->setText(tr("Synchronizing..."));
         changeTrayIcon(false, true);
         isSyncing = true;
     }
-    
+
     QByteArray strdata = process->readAllStandardOutput();
     *stdOutputString = *stdOutputString + QString(strdata);
 
-    if (stdOutputString->right(1) == "\n")
-    {
+    if (stdOutputString->right(1) == "\n") {
         QRegularExpression re;
         QRegularExpressionMatch match;
         QString operation("");
@@ -200,102 +201,93 @@ void Window::readStdOutput()
 #else
         QStringList listLine = stdOutputString->split("\n", Qt::SkipEmptyParts);
 #endif
-        for (int i = 0; i < listLine.size(); i++)
-        {
+        for (int i = 0; i < listLine.size(); i++) {
             // For debugging, you can de-comment the line under to see all the messages in the recent events window
             // eventsInfo(listLine[i]);
 
             // Get the free space on OneDrive and update the menu
-            if (listLine[i].toLower().contains("remaining free space"))
-            {
+            if (listLine[i].toLower().contains("remaining free space")) {
                 re.setPattern("([0-9]+)");
                 match = re.match(listLine[i]);
-                if (match.hasMatch())
-                {
+                if (match.hasMatch()) {
                     qint64 freeSpace = match.captured(1).toLongLong();
                     freeSpaceAction->setText(tr("Free space: ") + QLocale().formattedDataSize(freeSpace, 2, QLocale::DataSizeTraditionalFormat));
                 }
                 syncCompleted = true;
             }
-            // Sync is completed
+                // Sync is completed
             else if (listLine[i].contains("Sync with OneDrive is complete") ||
-                     listLine[i].contains("Monitored directory removed"))
+                     listLine[i].contains("Monitored directory removed")) {
                 syncCompleted = true;
-            // Create local directory
-            else if(listLine[i].left(26) == "Creating local directory: ")
-            {
+                // Create local directory
+            } else if (listLine[i].left(26) == "Creating local directory: ") {
                 operation = tr("Creating local directory");
                 fileName = listLine[i];
                 fileName.remove(0, 26);
                 syncCompleted = true;
             }
-            // Create directory on OneDrive
-            else if(listLine[i].left(42) == "Successfully created the remote directory ")
-            {
+                // Create directory on OneDrive
+            else if (listLine[i].left(42) == "Successfully created the remote directory ") {
                 operation = tr("Create directory");
                 fileName = listLine[i];
                 fileName.remove(0, 42);
                 fileName.chop(12); // Remove " on OneDrive" at the end
                 syncCompleted = true;
             }
-            // Create directory on OneDrive
-            else if(listLine[i].left(7) == "Moving ")
-            {
+                // Create directory on OneDrive
+            else if (listLine[i].left(7) == "Moving ") {
                 operation = tr("Rename");
-                re.setPattern("^Moving (.+) to (.+)$"); 
+                re.setPattern("^Moving (.+) to (.+)$");
                 match = re.match(listLine[i]);
-                if (match.hasMatch())
+                if (match.hasMatch()) {
                     fileName = match.captured(1) + " --> " + match.captured(2);
+                }
                 syncCompleted = true;
             }
-            // Uploading, downloading or deleting files
-            else if (listLine[i].contains(QRegularExpression("Downloading file|Downloading new file|Downloading modified file|Uploading file|Uploading new file|Uploading modified file|Deleting item")))
-            {
-                if (listLine[i].contains("Deleting"))
-                {
+                // Uploading, downloading or deleting files
+            else if (listLine[i].contains(QRegularExpression(
+                    "Downloading file|Downloading new file|Downloading modified file|Uploading file|Uploading new file|Uploading modified file|Deleting item"))) {
+                if (listLine[i].contains("Deleting")) {
                     operation = tr("Deleting");
-                    re.setPattern("( item from OneDrive:| item) (.+)$"); 
+                    re.setPattern("( item from OneDrive:| item) (.+)$");
                     match = re.match(listLine[i]);
-                    if (match.hasMatch())
+                    if (match.hasMatch()) {
                         fileName = match.captured(2);
+                    }
                     syncCompleted = true;
-                }
-                else if (listLine[i].contains("Uploading"))
-                {
+                } else if (listLine[i].contains("Uploading")) {
                     operation = tr("Uploading");
                     re.setPattern(R"((Uploading file|Uploading new file|Uploading modified file) (.+) \.\.\.)");
                     match = re.match(listLine[i]);
-                    if (match.hasMatch())
-                    {
+                    if (match.hasMatch()) {
                         fileName = match.captured(2);
-                        if (fileName.endsWith(" ..."))
-                            fileName.truncate(fileName.size() - 4); 
+                        if (fileName.endsWith(" ...")) {
+                            fileName.truncate(fileName.size() - 4);
+                        }
                     }
-                }
-                else if (listLine[i].contains("Downloading"))
-                {
+                } else if (listLine[i].contains("Downloading")) {
                     operation = tr("Downloading");
                     re.setPattern(R"((Downloading file|Downloading new file|Downloading modified file) (.+) \.\.\.)");
                     match = re.match(listLine[i]);
-                    if (match.hasMatch())
-                    {
+                    if (match.hasMatch()) {
                         fileName = match.captured(2);
-                        if (fileName.endsWith(" ..."))
-                            fileName.truncate(fileName.size() - 4); 
+                        if (fileName.endsWith(" ...")) {
+                            fileName.truncate(fileName.size() - 4);
+                        }
                     }
                 }
             }
-            
-            if (!operation.isEmpty())
-                eventsOperation(operation, fileName);
 
-            if (syncCompleted)
-            {
+            if (!operation.isEmpty()) {
+                eventsOperation(operation, fileName);
+            }
+
+            if (syncCompleted) {
                 statusAction->setText(tr("Sync complete"));
                 changeTrayIcon(false, false);
                 isSyncing = false;
             }
-                
+
             operation = "";
             fileName = "";
         }
@@ -310,21 +302,20 @@ void Window::readStdError()
     eventsError(QString(strdata));
 }
 
-void Window::closeEvent(QCloseEvent *event)
+void Window::closeEvent(QCloseEvent * event)
 // Event launched when the window is closing
 {
-  #ifdef Q_OS_OSX
-  if (!event->spontaneous() || !isVisible()) {
-      return;
-  },
-  #endif
-  if (trayIcon->isVisible()) 
-  {
-      appConfig->size = size();
-      appConfig->pos = pos();
-      hide();
-      event->ignore();
-  }
+#ifdef Q_OS_OSX
+    if (!event->spontaneous() || !isVisible()) {
+        return;
+    },
+#endif
+    if (trayIcon->isVisible()) {
+        appConfig->size = size();
+        appConfig->pos = pos();
+        hide();
+        event->ignore();
+    }
 }
 
 void Window::quit()
@@ -339,35 +330,35 @@ void Window::about()
 // Function responsible to show the About dialog box
 {
     QMessageBox::about(this, tr("About"),
-                                "<b>" + qApp->applicationName() + " " + qApp->applicationVersion() + "</b><br><br>" +
-                                tr("Run and control OneDrive from the system tray.<br>"
-                                "This is a simple program to create a system tray icon and display program status for onedrive client developed by abraunegg.<br><br>"
-                                "Click with the left mouse button or double-click (depends on Linux distro) and the program shows the synchronization progress. "
-                                "Click with the right mouse button and a menu with the available options is shown. "
-                                "Click with the mid mouse button and the program shows the PID of the onedrive client.<br><br>"
-                                "The program was written in C++ using lib Qt 5.13.0.<br><br>"
-                                "To use the program you must first compile and install the onedrive client available at https://github.com/abraunegg/onedrive.<br><br>"
-                                "So many thanks to<ul>"
-                                "<li>abraunegg (https://github.com/abraunegg/onedrive)</li>"
-                                "<li>Daniel Borges Oliveira who developed the first version of this program (https://github.com/DanielBorgesOliveira/onedrive_tray)</li></ul><br>"
-                                "Feel free to clone and improve this program (https://github.com/bforest76/onedrive_tray).<br>"));
+                       "<b>" + qApp->applicationName() + " " + qApp->applicationVersion() + "</b><br><br>" +
+                       tr("Run and control OneDrive from the system tray.<br>"
+                          "This is a simple program to create a system tray icon and display program status for onedrive client developed by abraunegg.<br><br>"
+                          "Click with the left mouse button or double-click (depends on Linux distro) and the program shows the synchronization progress. "
+                          "Click with the right mouse button and a menu with the available options is shown. "
+                          "Click with the mid mouse button and the program shows the PID of the onedrive client.<br><br>"
+                          "The program was written in C++ using lib Qt 5.13.0.<br><br>"
+                          "To use the program you must first compile and install the onedrive client available at https://github.com/abraunegg/onedrive.<br><br>"
+                          "So many thanks to<ul>"
+                          "<li>abraunegg (https://github.com/abraunegg/onedrive)</li>"
+                          "<li>Daniel Borges Oliveira who developed the first version of this program (https://github.com/DanielBorgesOliveira/onedrive_tray)</li></ul><br>"
+                          "Feel free to clone and improve this program (https://github.com/bforest76/onedrive_tray).<br>"));
 }
 
 void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
 // Actions realized when you click on the tray icon (double click, right click, left click...)
 {
-    switch (reason)
-    {
+    switch (reason) {
         case QSystemTrayIcon::Context:
         case QSystemTrayIcon::Unknown:
             break;
         case QSystemTrayIcon::Trigger:
         case QSystemTrayIcon::DoubleClick:
             // Put here what should call when click with left button
-            if (auto_hide)
+            if (auto_hide) {
                 this->showNormal(); // Show the information window.
-            else
-                this->hide(); // Show the information window.
+            } else {
+                this->hide();
+            } // Show the information window.
             auto_hide = !auto_hide;
             break;
         case QSystemTrayIcon::MiddleClick: // Put here what should call when click with mid button
@@ -379,13 +370,12 @@ void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
 
             // If pid is greater than 0 the process is running
             // and when show a info about this.
-            if (pid > 0)
-            {
+            if (pid > 0) {
                 text.append(tr("OneDrive is running with the PID "));
                 text.append(QString::number(pid));
                 text.append(".\n");
             }
-            // If not the process is stopped and when notify the user.
+                // If not the process is stopped and when notify the user.
             else
                 text.append(tr("OneDrive is not running by some reason. Please restart the program."));
 
@@ -403,30 +393,33 @@ void Window::showMessage(const QString & message)
 void Window::eventsInfo(QString info)
 // Add an info in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + " </span><span style=\"color:black;\"> " + info + "</span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) +
+                       " </span><span style=\"color:black;\"> " + info + "</span></p>");
 }
 
 void Window::eventsError(QString error)
 // Add an error in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + " </span><span style=\"color:red;\"> " + error + "</span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) +
+                       " </span><span style=\"color:red;\"> " + error + "</span></p>");
 }
 
 void Window::eventsOperation(QString operation, QString fileName)
 // Add an operation (downloading, uploading, removing...) in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + "</span><span style=\"color:blue;\"> " + operation + ", <b>" + fileName + "</b> </span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) +
+                       "</span><span style=\"color:blue;\"> " + operation + ", <b>" + fileName + "</b> </span></p>");
 }
 
 void Window::createMessageGroupBox()
 // Create the recent events message box
 {
-  // ********** Recent events Output Area **********
+    // ********** Recent events Output Area **********
     events = new QPlainTextEdit;
     events->setReadOnly(true);
     events->setMaximumBlockCount(5000);
 
-    QGridLayout *messageLayout = new QGridLayout;
+    QGridLayout * messageLayout = new QGridLayout;
     messageLayout->addWidget(events, 2, 1, 1, 4);
     messageLayout->setColumnStretch(3, 0);
     messageLayout->setRowStretch(4, 0);
@@ -470,27 +463,25 @@ void Window::createActions()
 
     iconColorGroup = new QActionGroup(this);
     bool defaultColorFound(false);
-    for (int i = 0; i < IconInfo::defaultColors().size(); i++)
-    {
+    for (int i = 0; i < IconInfo::defaultColors().size(); i++) {
         QColor color = IconInfo::defaultColors()[i];
-        QAction *iconColorAction = new QAction(IconInfo::defaultColorsText()[i], this);
+        QAction * iconColorAction = new QAction(IconInfo::defaultColorsText()[i], this);
         iconColorAction->setCheckable(true);
-        if (appConfig->iconColor == color)
-        {
+        if (appConfig->iconColor == color) {
             iconColorAction->setChecked(true);
             defaultColorFound = true;
         }
         // TO DO : le menu s'affiche trop grand
         iconColorAction->setIcon(IconInfo::changeColorIcon(IconInfo::syncingOnedriveIconPathName(), color));
-        
-        connect(iconColorAction,  &QAction::triggered, this, [this, color]{ defineTrayIcon(color); });
+
+        connect(iconColorAction, &QAction::triggered, this, [this, color] { defineTrayIcon(color); });
         iconColorGroup->addAction(iconColorAction);
     }
 
-    QAction *moreColorsAction = new QAction(tr("&More colors..."), this);
+    QAction * moreColorsAction = new QAction(tr("&More colors..."), this);
     moreColorsAction->setCheckable(true);
     moreColorsAction->setChecked(!defaultColorFound);
-    connect(moreColorsAction,  &QAction::triggered, this, &Window::moreColors);
+    connect(moreColorsAction, &QAction::triggered, this, &Window::moreColors);
     iconColorGroup->addAction(moreColorsAction);
 
     quitAction = new QAction(tr("&Quit OneDrive"), this);
@@ -502,7 +493,7 @@ void Window::createActions()
 
 void Window::OpenConfigurationWindow()
 {
-  ConfigurationWindow->show();
+    ConfigurationWindow->show();
 }
 
 void Window::createTrayIcon()
@@ -525,7 +516,7 @@ void Window::createTrayIcon()
     trayIconMenu->addAction(suspendAction);
 
     trayIconMenu->addSeparator();
-    QMenu* submenuColor = trayIconMenu->addMenu(tr("Icon color"));
+    QMenu * submenuColor = trayIconMenu->addMenu(tr("Icon color"));
     submenuColor->addActions(iconColorGroup->actions());
 
     trayIconMenu->addSeparator();
@@ -539,7 +530,7 @@ void Window::createTrayIcon()
 
     trayIcon->setContextMenu(trayIconMenu);
     trayIcon->show();
-    
+
     connect(trayIcon, &QSystemTrayIcon::activated, this, &Window::iconActivated);
 }
 
@@ -550,7 +541,7 @@ void Window::loadSettings()
 // The function create it automatically if not exists.
 {
     appConfig = new AppConfiguration;
-    QSettings settings;  
+    QSettings settings;
     appConfig->iconColor = settings.value("Tray/IconColor", QColor(Qt::blue)).value<QColor>();
     settings.beginGroup("RecentEventWindow");
     appConfig->size = settings.value("Size", QSize(400, 300)).toSize();
@@ -570,6 +561,3 @@ void Window::saveSettings()
     settings.setValue("Position", appConfig->pos);
     settings.endGroup();
 }
-
-#endif 
-
