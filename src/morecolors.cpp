@@ -4,8 +4,8 @@
 #include <QDialogButtonBox>
 #include <QGroupBox>
 #include <QPainter>
-#include <iconinfo.h>
-#include <morecolors.h>
+#include "iconinfo.h"
+#include "morecolors.h"
 
 // TO DO : ajouter le parent
 MoreColorsDialog::MoreColorsDialog(const QColor &defaultColor)

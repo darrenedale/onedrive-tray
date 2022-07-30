@@ -2,7 +2,7 @@
 #include <QColor>
 #include <QPixmap>
 #include <QPainter>
-#include <iconinfo.h>
+#include "iconinfo.h"
 
 IconInfo::IconInfo(QObject* parent) : QObject(parent) {}
 
@@ -16,7 +16,7 @@ QStringList IconInfo::defaultColorsText()
 {
     static const QStringList result = {tr("Blue"), tr("White"), tr("Red"), tr("Green"), tr("Black")};
     return result;
-}
+}*.cpp
 
 QVector<QColor> IconInfo::defaultColors()
 {

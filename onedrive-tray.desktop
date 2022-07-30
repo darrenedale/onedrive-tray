@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=OneDrive
+Comment=OneDrive synchronisation manager
+Exec=/usr/local/bin/onedrive-tray
+Icon=OneDrive
+Type=Application
+Categories=Network;Office;

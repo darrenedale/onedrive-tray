@@ -5,8 +5,8 @@
 
 #include <QMessageBox>
 #include <libgen.h>
-#include <window.h>
-#include <iconinfo.h>
+#include "window.h"
+#include "iconinfo.h"
 
 int main(int argc, char *argv[])
 {

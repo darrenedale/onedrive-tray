@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="OneDrive">../images/OneDrive.png</file>
+        <file alias="OneDriveSync">../images/OneDrive-sync.png</file>
+    </qresource>
+</RCC>

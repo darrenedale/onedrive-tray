@@ -12,13 +12,6 @@
 
 #include "window_1.h"
 
-struct AppConfiguration
-{
-  QColor iconColor;
-  QSize size;
-  QPoint pos;
-};
-
 QT_BEGIN_NAMESPACE
 class QAction; class QActionGroup;
 class QCheckBox;class QComboBox;
@@ -71,6 +64,13 @@ class Window : public QDialog
     void eventsInfo(QString info);
     void eventsError(QString error);
     void eventsOperation(QString Operation, QString fileName);
+
+    struct AppConfiguration
+    {
+        QColor iconColor;
+        QSize size;
+        QPoint pos;
+    };
 
     bool auto_hide;
     bool isSyncing;

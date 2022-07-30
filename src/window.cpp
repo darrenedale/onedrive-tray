@@ -19,8 +19,8 @@
 #include <QMessageBox>
 #include <QFrame>
 #include <QPixmap>
-#include <iconinfo.h>
-#include <morecolors.h>
+#include "iconinfo.h"
+#include "morecolors.h"
 
 Window::Window(QString onedrive_path, QString onedrive_arguments)
 // Create the window
@@ -264,7 +264,7 @@ void Window::readStdOutput()
                 else if (listLine[i].contains("Uploading"))
                 {
                     operation = tr("Uploading");
-                    re.setPattern("(Uploading file|Uploading new file|Uploading modified file) (.+) \.\.\."); 
+                    re.setPattern(R"((Uploading file|Uploading new file|Uploading modified file) (.+) \.\.\.)");
                     match = re.match(listLine[i]);
                     if (match.hasMatch())
                     {
@@ -276,7 +276,7 @@ void Window::readStdOutput()
                 else if (listLine[i].contains("Downloading"))
                 {
                     operation = tr("Downloading");
-                    re.setPattern("(Downloading file|Downloading new file|Downloading modified file) (.+) \.\.\."); 
+                    re.setPattern(R"((Downloading file|Downloading new file|Downloading modified file) (.+) \.\.\.)");
                     match = re.match(listLine[i]);
                     if (match.hasMatch())
                     {
@@ -404,19 +404,19 @@ void Window::showMessage(QString &text)
 void Window::eventsInfo(QString info)
 // Add an info in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(Qt::SystemLocaleShortDate) + " </span><span style=\"color:black;\"> " + info + "</span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + " </span><span style=\"color:black;\"> " + info + "</span></p>");
 }
 
 void Window::eventsError(QString error)
 // Add an error in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(Qt::SystemLocaleShortDate) + " </span><span style=\"color:red;\"> " + error + "</span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + " </span><span style=\"color:red;\"> " + error + "</span></p>");
 }
 
 void Window::eventsOperation(QString operation, QString fileName)
 // Add an operation (downloading, uploading, removing...) in the recent events
 {
-    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(Qt::SystemLocaleShortDate) + "</span><span style=\"color:blue;\"> " + operation + ", <b>" + fileName + "</b> </span></p>");
+    events->appendHtml("<p><span style=\"color:gray;\">" + QDateTime::currentDateTime().toString(QLocale::system().dateFormat(QLocale::ShortFormat)) + "</span><span style=\"color:blue;\"> " + operation + ", <b>" + fileName + "</b> </span></p>");
 }
 
 void Window::createMessageGroupBox()
