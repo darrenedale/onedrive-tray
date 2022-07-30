@@ -9,8 +9,14 @@
 #include <memory>
 #include <QApplication>
 #include <QTranslator>
+#include "IconStyle.h"
+#include "SyncState.h"
 
 #define oneDriveApp (dynamic_cast<OneDrive::Application *>(QApplication::instance()))
+
+QT_BEGIN_NAMESPACE
+class QSystemTrayIcon;
+QT_END_NAMESPACE
 
 namespace OneDrive
 {
@@ -42,6 +48,8 @@ namespace OneDrive
 
         [[nodiscard]] const QString & oneDriveArgs() const;
 
+        void showAboutDialogue() const;
+
         void showNotification(const QString & message, int timeout = DefaultNotificationTimeout, NotificationType type = NotificationType::Message);
 
         inline void showNotification(const QString & message, NotificationType type)
@@ -49,12 +57,44 @@ namespace OneDrive
             showNotification(message, DefaultNotificationTimeout, type);
         }
 
+        void openLocalDirectory() const;
+
+        inline QSystemTrayIcon & trayIcon() const
+        {
+            return *m_trayIcon;
+        }
+
+        inline SyncState state() const
+        {
+            return m_state;
+        }
+
+        IconStyle iconStyle() const;
+        void setTrayIconStyle(IconStyle style);
+
+        void loadSettings();
+        void saveSettings() const;
+
+        const QString & oneDriveConfigFile() const;
+
     private:
+        struct Settings
+        {
+            IconStyle iconStyle = IconStyle::colourful;
+        };
+
+        QString determineOneDriveConfigFile() const;
+
+        void refreshTrayIcon();
+        void createTrayIconMenu();
         void installTranslators();
 
+        SyncState m_state;
+        Settings settings;
         QString m_oneDrivePath;
         QString m_oneDriveArgs;
         std::unique_ptr<Window> m_window;
+        std::unique_ptr<QSystemTrayIcon> m_trayIcon;
 
         QTranslator m_qtTranslator;
         QTranslator m_appTranslator;

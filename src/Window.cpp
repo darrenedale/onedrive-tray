@@ -84,7 +84,7 @@ void Window::openFolder()
     // Define the OneDrive config filename
     QString onedriveConfigFileName("");
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-    QStringList arguments01 = arguments->split(" ", QString::SkipEmptyParts);
+    QStringList arguments01 = oneDriveApp->oneDriveArgs().split(" ", QString::SkipEmptyParts);
 #else
     QStringList arguments01 = oneDriveApp->oneDriveArgs().split(QRegularExpression("[ =]"), Qt::SkipEmptyParts);
 #endif
@@ -136,7 +136,8 @@ void Window::restart()
     eventsInfo(tr("Synchronization restarted"));
 }
 
-void Window::setTrayIconStyle(const IconStyle & style)
+void Window::setTrayIconStyle(
+        IconStyle & style)
 // Slot function to define the icon of the tray icon
 {
     appConfig.iconStyle = style;
@@ -318,19 +319,6 @@ void Window::quit()
 void Window::about()
 // Function responsible to show the About dialog box
 {
-    QMessageBox::about(this, tr("About"),
-                       "<b>" + qApp->applicationName() + " " + qApp->applicationVersion() + "</b><br><br>" +
-                       tr("Run and control OneDrive from the system tray.<br>"
-                          "This is a simple program to create a system tray icon and display program status for onedrive client developed by abraunegg.<br><br>"
-                          "Click with the left mouse button or double-click (depends on Linux distro) and the program shows the synchronization progress. "
-                          "Click with the right mouse button and a menu with the available options is shown. "
-                          "Click with the mid mouse button and the program shows the PID of the onedrive client.<br><br>"
-                          "The program was written in C++ using lib Qt 5.13.0.<br><br>"
-                          "To use the program you must first compile and install the onedrive client available at https://github.com/abraunegg/onedrive.<br><br>"
-                          "So many thanks to<ul>"
-                          "<li>abraunegg (https://github.com/abraunegg/onedrive)</li>"
-                          "<li>Daniel Borges Oliveira who developed the first version of this program (https://github.com/DanielBorgesOliveira/onedrive_tray)</li></ul><br>"
-                          "Feel free to clone and improve this program (https://github.com/bforest76/onedrive_tray).<br>"));
 }
 
 void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
@@ -368,15 +356,9 @@ void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
             else
                 text.append(tr("OneDrive is not running by some reason. Please restart the program."));
 
-            showMessage(text); // Show the Message baloon.
+            oneDriveApp->showNotification(text);
             break;
     }
-}
-
-void Window::showMessage(const QString & message)
-// Function used to print message in the notification baloon
-{
-    trayIcon->showMessage(qApp->applicationName(), message, trayIcon->icon(), 5000);
 }
 
 void Window::eventsInfo(QString info)
@@ -468,7 +450,7 @@ void Window::createActions()
     connect(quitAction, &QAction::triggered, this, &Window::quit);
 
     aboutAction = new QAction(tr("&About OneDrive"), this);
-    connect(aboutAction, &QAction::triggered, this, &Window::about);
+    connect(aboutAction, &QAction::triggered, oneDriveApp, &Application::showAboutDialogue);
 }
 
 void Window::createTrayIcon()

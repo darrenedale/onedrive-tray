@@ -37,8 +37,6 @@ namespace OneDrive
 
         void iconActivated(QSystemTrayIcon::ActivationReason reason);
 
-        void showMessage(const QString & text);
-
         void readStdOutput();
 
         void readStdError();
