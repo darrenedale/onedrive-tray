@@ -6,7 +6,7 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QtCore>
 #include <QtWidgets/QDialog>
-#include "SettingsWindow.h"
+#include "IconStyle.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -15,21 +15,9 @@ class QActionGroup;
 
 class QCheckBox;
 
-class QComboBox;
-
 class QGroupBox;
 
-class QLabel;
-
-class QLineEdit;
-
 class QMenu;
-
-class QPushButton;
-
-class QSpinBox;
-
-class QTextEdit;
 
 QT_END_NAMESPACE
 
@@ -40,10 +28,7 @@ namespace OneDrive
     Q_OBJECT
 
     public:
-        Window(QString onedrive_path, QString onedrive_arguments);
-
-        QString * arguments;
-        QString * path;
+        Window();
 
     protected:
         void closeEvent(QCloseEvent * event) override;
@@ -58,11 +43,7 @@ namespace OneDrive
 
         void readStdError();
 
-        void OpenConfigurationWindow();
-
-        void defineTrayIcon(const QColor & color);
-
-        void moreColors();
+        void setTrayIconStyle(const IconStyle &);
 
     private:
         void createIconGroupBox();
@@ -81,13 +62,11 @@ namespace OneDrive
 
         void suspend();
 
-        void changeTrayIcon(bool forceChange, bool sync);
+        void refreshTrayIcon(bool forceChange, bool sync);
 
         void quit();
 
         void about();
-
-        void createConfigurationGroupBox();
 
         void loadSettings();
 
@@ -101,7 +80,7 @@ namespace OneDrive
 
         struct AppConfiguration
         {
-            QColor iconColor;
+            IconStyle iconStyle = IconStyle::colourful;
             QSize size;
             QPoint pos;
         };
@@ -109,30 +88,16 @@ namespace OneDrive
         bool auto_hide;
         bool isSyncing;
 
-        QGroupBox * iconGroupBox;
-        QLabel * iconLabel;
-        QComboBox * iconComboBox;
         QCheckBox * showIconCheckBox;
         QProcess * process;
 
         QGroupBox * messageGroupBox;
-        QLabel * typeLabel;
-        QLabel * durationLabel;
-        QLabel * durationWarningLabel;
-        QLabel * titleLabel;
         QPlainTextEdit * events;
         QString * stdOutputString;
-        QLabel * bodyLabel;
-        QComboBox * typeComboBox;
-        QSpinBox * durationSpinBox;
-        QLineEdit * titleEdit;
-        QTextEdit * bodyEdit;
-        QPushButton * showMessageButton;
 
         QAction * freeSpaceAction;
         QAction * statusAction;
         QAction * consoleAction;
-        QAction * configurationAction;
         QAction * openfolderAction;
         QAction * restartAction;
         QAction * suspendAction;
@@ -142,11 +107,8 @@ namespace OneDrive
 
         QSystemTrayIcon * trayIcon;
         QMenu * trayIconMenu;
-        QString * currentIconPath;
 
-        SettingsWindow * ConfigurationWindow;
-
-        AppConfiguration * appConfig;
+        AppConfiguration appConfig;
     };
 }
 

@@ -58,7 +58,7 @@ Application::Application(int & argc, char ** argv)
     m_oneDriveArgs = parser.value(onedriveArgsOption);
 
     setQuitOnLastWindowClosed(false);
-    m_window = std::make_unique<Window>(m_oneDrivePath, m_oneDriveArgs);
+    m_window = std::make_unique<Window>();
 }
 
 Application::~Application() noexcept = default;

@@ -1,6 +1,6 @@
-#include "Window.h"
-#include "SettingsWindow.h"
 
+#include <iostream>
+#include <stdexcept>
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
@@ -12,26 +12,17 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
-#include <QTextEdit>
 #include <QVBoxLayout>
 #include <QMessageBox>
 #include <QFrame>
-#include <QPixmap>
-#include "IconInfo.h"
-#include "MoreColoursDialogue.h"
+#include "IconStyle.h"
+#include "Window.h"
+#include "Application.h"
 
 using namespace OneDrive;
 
-Window::Window(QString onedrive_path, QString onedrive_arguments)
-// Create the window
+Window::Window()
 {
-    // Copy the program path and the arguments to be used
-    // in another parts of the program.
-    arguments = &onedrive_arguments;
-    path = &onedrive_path;
-
-    ConfigurationWindow = new SettingsWindow;
-
     // Used to show the window in odd clicks and hide in even.
     auto_hide = true;
     // Used to know if OneDrive is syncing or not
@@ -44,22 +35,21 @@ Window::Window(QString onedrive_path, QString onedrive_arguments)
     createActions();
     createTrayIcon();
 
-    QVBoxLayout * mainLayout = new QVBoxLayout;
+    auto * mainLayout = new QVBoxLayout;
     mainLayout->addWidget(messageGroupBox);
     setLayout(mainLayout);
 
     setWindowTitle(tr("Recent events"));
-    resize(appConfig->size);
-    if (!appConfig->pos.isNull()) {
-        move(appConfig->pos);
+    resize(appConfig.size);
+    if (!appConfig.pos.isNull()) {
+        move(appConfig.pos);
     }
 
-    execute(onedrive_path, onedrive_arguments);
+    execute(oneDriveApp->oneDrivePath(), oneDriveApp->oneDriveArgs());
     eventsInfo(tr("OneDrive started"));
 }
 
 void Window::execute(QString onedrive_path, QString onedrive_arguments)
-// Execute the OneDrive service
 {
     process = new QProcess();
 
@@ -96,7 +86,7 @@ void Window::openFolder()
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     QStringList arguments01 = arguments->split(" ", QString::SkipEmptyParts);
 #else
-    QStringList arguments01 = arguments->split(QRegularExpression("[ =]"), Qt::SkipEmptyParts);
+    QStringList arguments01 = oneDriveApp->oneDriveArgs().split(QRegularExpression("[ =]"), Qt::SkipEmptyParts);
 #endif
     int index = arguments01.indexOf("--confdir", 0) + 1;
     if (index > 0) {
@@ -117,7 +107,7 @@ void Window::openFolder()
             syncDirString.replace(0, 1, QDir::homePath());
         }
         // Open the folder
-        QProcess * openFolderProcess = new QProcess(this);
+        auto * openFolderProcess = new QProcess(this);
         openFolderProcess->start("xdg-open", QStringList() << syncDirString);
     }
 }
@@ -130,7 +120,7 @@ void Window::suspend()
     restartAction->setVisible(true);
     suspendAction->setVisible(false);
     isSyncing = false;
-    changeTrayIcon(true, false);
+    refreshTrayIcon(true, false);
 
     statusAction->setText(tr("Synchronization suspended"));
     eventsInfo(tr("Synchronization suspended"));
@@ -146,32 +136,32 @@ void Window::restart()
     eventsInfo(tr("Synchronization restarted"));
 }
 
-void Window::defineTrayIcon(const QColor & color)
+void Window::setTrayIconStyle(const IconStyle & style)
 // Slot function to define the icon of the tray icon
 {
-    appConfig->iconColor = color;
-    changeTrayIcon(true, false);
+    appConfig.iconStyle = style;
+    refreshTrayIcon(true, false);
 }
 
-void Window::moreColors()
-// Slot function to show the more colors window
-{
-    MoreColoursDialogue * mcd = new MoreColoursDialogue(appConfig->iconColor);
-    if (mcd->exec()) {
-        appConfig->iconColor = mcd->colorValidated();
-        changeTrayIcon(true, false);
-    }
-}
-
-void Window::changeTrayIcon(bool forceChange, bool sync)
-// Change the icon of the tray icon depending on the context (is sincing or not)
+void Window::refreshTrayIcon(bool forceChange, bool sync)
 {
     // do not change the tray icon if is currently syncing and continue to sync
     if (forceChange || !(isSyncing && sync)) {
         if (sync || (isSyncing && forceChange)) {
             trayIcon->setIcon(QIcon(":/tray-icon-sync"));
         } else {
-            trayIcon->setIcon(QIcon(":/tray-icon-blue"));
+            switch (appConfig.iconStyle) {
+                case IconStyle::colourful:
+                    trayIcon->setIcon(QIcon(":/tray-icon-colour"));
+                    break;
+
+                case IconStyle::monochrome:
+                    trayIcon->setIcon(QIcon(":/tray-icon-mono"));
+                    break;
+
+                default:
+                    throw std::logic_error("Unhandled icon style in Window::refreshTrayIcon()");
+            }
         }
     }
 }
@@ -183,7 +173,7 @@ void Window::readStdOutput()
 
     if (!isSyncing) {
         statusAction->setText(tr("Synchronizing..."));
-        changeTrayIcon(false, true);
+        refreshTrayIcon(false, true);
         isSyncing = true;
     }
 
@@ -284,7 +274,7 @@ void Window::readStdOutput()
 
             if (syncCompleted) {
                 statusAction->setText(tr("Sync complete"));
-                changeTrayIcon(false, false);
+                refreshTrayIcon(false, false);
                 isSyncing = false;
             }
 
@@ -311,19 +301,18 @@ void Window::closeEvent(QCloseEvent * event)
     },
 #endif
     if (trayIcon->isVisible()) {
-        appConfig->size = size();
-        appConfig->pos = pos();
+        appConfig.size = size();
+        appConfig.pos = pos();
         hide();
         event->ignore();
     }
 }
 
 void Window::quit()
-// Function responsible to terminate the app and the childrens
 {
-    process->terminate(); // Kill process.
-    saveSettings(); // Save the settings.
-    qApp->quit(); // Kill application.
+    process->terminate();
+    saveSettings();
+    qApp->quit();
 }
 
 void Window::about()
@@ -437,7 +426,6 @@ void Window::createMessageGroupBox()
 }
 
 void Window::createActions()
-// Create the actions of the menu
 {
     freeSpaceAction = new QAction(tr("Free space: "), this);
     freeSpaceAction->setDisabled(true);
@@ -451,9 +439,6 @@ void Window::createActions()
     openfolderAction = new QAction(tr("&Open OneDrive folder"), this);
     connect(openfolderAction, &QAction::triggered, this, &Window::openFolder);
 
-    //configurationAction = new QAction(tr("&Configuration..."), this);
-    //connect(configurationAction, SIGNAL(triggered()), this, SLOT(OpenConfigurationWindow()));
-
     restartAction = new QAction(tr("&Restart the synchronization"), this);
     connect(restartAction, &QAction::triggered, this, &Window::restart);
     restartAction->setVisible(false);
@@ -462,27 +447,22 @@ void Window::createActions()
     connect(suspendAction, &QAction::triggered, this, &Window::suspend);
 
     iconColorGroup = new QActionGroup(this);
-    bool defaultColorFound(false);
-    for (int i = 0; i < IconInfo::defaultColors().size(); i++) {
-        QColor color = IconInfo::defaultColors()[i];
-        QAction * iconColorAction = new QAction(IconInfo::defaultColorsText()[i], this);
-        iconColorAction->setCheckable(true);
-        if (appConfig->iconColor == color) {
-            iconColorAction->setChecked(true);
-            defaultColorFound = true;
-        }
-        // TO DO : le menu s'affiche trop grand
-        iconColorAction->setIcon(IconInfo::changeColorIcon(IconInfo::syncingOnedriveIconPathName(), color));
 
-        connect(iconColorAction, &QAction::triggered, this, [this, color] { defineTrayIcon(color); });
-        iconColorGroup->addAction(iconColorAction);
-    }
+    auto * action = iconColorGroup->addAction(QIcon(":/tray-icon-mono"), tr("Monochrome"));
+    action->setCheckable(true);
+    action->setChecked(IconStyle::colourful == appConfig.iconStyle);
 
-    QAction * moreColorsAction = new QAction(tr("&More colors..."), this);
-    moreColorsAction->setCheckable(true);
-    moreColorsAction->setChecked(!defaultColorFound);
-    connect(moreColorsAction, &QAction::triggered, this, &Window::moreColors);
-    iconColorGroup->addAction(moreColorsAction);
+    connect(action, &QAction::triggered,[this] {
+        setTrayIconStyle(IconStyle::monochrome);
+    });
+
+    action = iconColorGroup->addAction(QIcon(":/tray-icon-colour"), tr("Colourful"));
+    action->setCheckable(true);
+    action->setChecked(IconStyle::colourful == appConfig.iconStyle);
+
+    connect(action, &QAction::triggered,[this] {
+        setTrayIconStyle(IconStyle::colourful);
+    });
 
     quitAction = new QAction(tr("&Quit OneDrive"), this);
     connect(quitAction, &QAction::triggered, this, &Window::quit);
@@ -491,13 +471,7 @@ void Window::createActions()
     connect(aboutAction, &QAction::triggered, this, &Window::about);
 }
 
-void Window::OpenConfigurationWindow()
-{
-    ConfigurationWindow->show();
-}
-
 void Window::createTrayIcon()
-// Create the tray icon menu
 {
     trayIconMenu = new QMenu(this);
 
@@ -506,17 +480,12 @@ void Window::createTrayIcon()
     trayIconMenu->addSeparator();
 
     trayIconMenu->addAction(consoleAction);
-
     trayIconMenu->addAction(openfolderAction);
-
-    //trayIconMenu->addAction(configurationAction);
-
     trayIconMenu->addAction(restartAction);
-
     trayIconMenu->addAction(suspendAction);
-
     trayIconMenu->addSeparator();
-    QMenu * submenuColor = trayIconMenu->addMenu(tr("Icon color"));
+
+    QMenu* submenuColor = trayIconMenu->addMenu(tr("Icon style"));
     submenuColor->addActions(iconColorGroup->actions());
 
     trayIconMenu->addSeparator();
@@ -524,9 +493,7 @@ void Window::createTrayIcon()
     trayIconMenu->addAction(aboutAction);
 
     trayIcon = new QSystemTrayIcon(this);
-    changeTrayIcon(true, false);
-
-    trayIcon = new QSystemTrayIcon(QIcon(":tray-icon-blue"), this);
+    refreshTrayIcon(true, false);
 
     trayIcon->setContextMenu(trayIconMenu);
     trayIcon->show();
@@ -535,29 +502,34 @@ void Window::createTrayIcon()
 }
 
 void Window::loadSettings()
-// Load the settings of the application
-// The constructor QSettings uses app.organizationName and app.applicationName to define the path of the file.
-// The file where the settings are stored is $HOME/.config/onedrive_tray/onedrive_tray.conf.
-// The function create it automatically if not exists.
 {
-    appConfig = new AppConfiguration;
     QSettings settings;
-    appConfig->iconColor = settings.value("Tray/IconColor", QColor(Qt::blue)).value<QColor>();
+
+    switch (settings.value("Tray/IconStyle", 0).value<int>()) {
+        default:
+            std::cerr << "unexpected icon style " << settings.value("Tray/IconStyle", 0).value<int>() << " in settings file - defaulting to 'colourful'\n";
+            [[fallthrough]];
+        case static_cast<int>(IconStyle::colourful):
+            appConfig.iconStyle = IconStyle::colourful;
+            break;
+
+        case static_cast<int>(IconStyle::monochrome):
+            appConfig.iconStyle = IconStyle::monochrome;
+            break;
+    }
+
     settings.beginGroup("RecentEventWindow");
-    appConfig->size = settings.value("Size", QSize(400, 300)).toSize();
-    appConfig->pos = settings.value("Position", QPoint(0, 0)).toPoint();
+    appConfig.size = settings.value("Size", QSize(400, 300)).toSize();
+    appConfig.pos = settings.value("Position", QPoint(0, 0)).toPoint();
     settings.endGroup();
 }
 
 void Window::saveSettings()
-// Save the settings of the application
-// The constructor QSettings uses app.organizationName and app.applicationName to define the path of the file.
-// The file where the settings are stored is $HOME/.config/onedrive_tray/onedrive_tray.conf.
 {
     QSettings settings;
-    settings.setValue("Tray/IconColor", appConfig->iconColor);
+    settings.setValue("Tray/IconStyle", static_cast<int>(appConfig.iconStyle));
     settings.beginGroup("RecentEventWindow");
-    settings.setValue("Size", appConfig->size);
-    settings.setValue("Position", appConfig->pos);
+    settings.setValue("Size", appConfig.size);
+    settings.setValue("Position", appConfig.pos);
     settings.endGroup();
 }
