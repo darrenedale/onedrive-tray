@@ -5,25 +5,32 @@
 
 QT_BEGIN_NAMESPACE
 class QColorDialog;
+
 class QToolButton;
+
 QT_END_NAMESPACE
 
-class MoreColoursDialogue : public QDialog
+namespace OneDrive
 {
+    class MoreColoursDialogue : public QDialog
+    {
     Q_OBJECT
 
-public:
-    explicit MoreColoursDialogue(const QColor &defaultColor);
-    QColor colorValidated();
+    public:
+        explicit MoreColoursDialogue(const QColor & defaultColor);
 
-protected:
+        QColor colorValidated();
 
-private slots:
-    void currentColorChanged(const QColor &color);
+    protected:
 
-private:
-  QColorDialog *colorDlg;
-  QToolButton *iconButton;
-};
+    private slots:
+
+        void currentColorChanged(const QColor & color);
+
+    private:
+        QColorDialog * colorDlg;
+        QToolButton * iconButton;
+    };
+}
 
 #endif
