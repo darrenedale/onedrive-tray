@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QTranslator>
 
+#define oneDriveApp (dynamic_cast<OneDrive::Application *>(QApplication::instance()))
 
 namespace OneDrive
 {
