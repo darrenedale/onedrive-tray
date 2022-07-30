@@ -4,11 +4,11 @@
 #include <QDialogButtonBox>
 #include <QGroupBox>
 #include <QPainter>
-#include "iconinfo.h"
-#include "morecolors.h"
+#include "IconInfo.h"
+#include "MoreColoursDialogue.h"
 
 // TO DO : ajouter le parent
-MoreColorsDialog::MoreColorsDialog(const QColor &defaultColor)
+MoreColoursDialogue::MoreColoursDialogue(const QColor &defaultColor)
 // Dialog box to choose the color of the icon
 {
     setWindowTitle(tr("More colors"));
@@ -25,7 +25,7 @@ MoreColorsDialog::MoreColorsDialog(const QColor &defaultColor)
     colorDlg->setCustomColor(4, Qt::red);
     colorDlg->setCustomColor(5, Qt::yellow);
     colorDlg->setCustomColor(6, Qt::cyan);
-    connect(colorDlg, &QColorDialog::currentColorChanged, this, &MoreColorsDialog::currentColorChanged);
+    connect(colorDlg, &QColorDialog::currentColorChanged, this, &MoreColoursDialogue::currentColorChanged);
     
     iconButton = new QToolButton;
     iconButton->setIconSize(QSize(128, 128));
@@ -48,13 +48,13 @@ MoreColorsDialog::MoreColorsDialog(const QColor &defaultColor)
     setLayout(vLayout);
 }
 
-void MoreColorsDialog::currentColorChanged(const QColor &color)
+void MoreColoursDialogue::currentColorChanged(const QColor &color)
 // Slot function called when the user selects a new color
 {
     iconButton->setIcon(IconInfo::changeColorIcon(IconInfo::syncingOnedriveIconPathName(), color));
 }
 
-QColor MoreColorsDialog::colorValidated()
+QColor MoreColoursDialogue::colorValidated()
 // Return the selected color by the user
 {
     return colorDlg->currentColor();

@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="window-icon">../images/OneDrive.png</file>
+        <file alias="tray-icon-blue">../images/OneDrive.svg</file>
+        <file alias="tray-icon-mono">../images/OneDrive.svg</file>
+        <file alias="tray-icon-sync">../images/OneDrive-sync.png</file>
         <file alias="OneDrive">../images/OneDrive.png</file>
         <file alias="OneDriveSync">../images/OneDrive-sync.png</file>
     </qresource>

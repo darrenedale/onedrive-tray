@@ -12,12 +12,12 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 add_executable(
     onedrive-tray
     src/main.cpp
-    src/window.cpp
-    src/window_1.cpp
-    src/iconinfo.cpp
-    src/morecolors.cpp
+        src/Window.cpp
+        src/SettingsWindow.cpp
+        src/IconInfo.cpp
+        src/MoreColoursDialogue.cpp
     resources/systray.qrc
-)
+        src/Application.cpp src/Application.h)
 
 target_link_libraries(
     onedrive-tray

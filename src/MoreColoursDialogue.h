@@ -8,12 +8,12 @@ class QColorDialog;
 class QToolButton;
 QT_END_NAMESPACE
 
-class MoreColorsDialog : public QDialog
+class MoreColoursDialogue : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit MoreColorsDialog(const QColor &defaultColor);
+    explicit MoreColoursDialogue(const QColor &defaultColor);
     QColor colorValidated();
 
 protected:
