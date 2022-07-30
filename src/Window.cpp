@@ -1,5 +1,5 @@
-#include "window.h"
-#include "window_1.h"
+#include "Window.h"
+#include "SettingsWindow.h"
 
 #ifndef QT_NO_SYSTEMTRAYICON
 
@@ -19,8 +19,8 @@
 #include <QMessageBox>
 #include <QFrame>
 #include <QPixmap>
-#include "iconinfo.h"
-#include "morecolors.h"
+#include "IconInfo.h"
+#include "MoreColoursDialogue.h"
 
 Window::Window(QString onedrive_path, QString onedrive_arguments)
 // Create the window
@@ -30,7 +30,7 @@ Window::Window(QString onedrive_path, QString onedrive_arguments)
     arguments = &onedrive_arguments;
     path = &onedrive_path;
     
-    ConfigurationWindow = new Window_1;
+    ConfigurationWindow = new SettingsWindow;
     
     // Used to show the window in odd clicks and hide in even.
     auto_hide = true;
@@ -152,7 +152,7 @@ void Window::defineTrayIcon(const QColor &color)
 void Window::moreColors()
 // Slot function to show the more colors window
 {
-    MoreColorsDialog *mcd = new MoreColorsDialog(appConfig->iconColor);
+    MoreColoursDialogue *mcd = new MoreColoursDialogue(appConfig->iconColor);
     if (mcd->exec())
     {
         appConfig->iconColor = mcd->colorValidated();
@@ -163,14 +163,13 @@ void Window::moreColors()
 void Window::changeTrayIcon(bool forceChange, bool sync)
 // Change the icon of the tray icon depending on the context (is sincing or not)
 {
-    // do not change the tray icon if is currently syncing and continue to sync 
-    if (forceChange || !(isSyncing && sync))
-    {
-        if (sync || (isSyncing && forceChange))
-            *currentIconPath = IconInfo::syncingOnedriveIconPathName();
-        else
-            *currentIconPath = IconInfo::onedriveIconPathName();
-        trayIcon->setIcon(IconInfo::changeColorIcon(*currentIconPath, appConfig->iconColor));
+    // do not change the tray icon if is currently syncing and continue to sync
+    if (forceChange || !(isSyncing && sync)) {
+        if (sync || (isSyncing && forceChange)) {
+            trayIcon->setIcon(QIcon(":/tray-icon-sync"));
+        } else {
+            trayIcon->setIcon(QIcon(":/tray-icon-blue"));
+        }
     }
 }
 
@@ -395,10 +394,10 @@ void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
     }
 }
 
-void Window::showMessage(QString &text)
+void Window::showMessage(const QString & message)
 // Function used to print message in the notification baloon
 {
-    trayIcon->showMessage(tr("OneDrive"), text, IconInfo::changeColorIcon(*currentIconPath, appConfig->iconColor), 5000);
+    trayIcon->showMessage(qApp->applicationName(), message, trayIcon->icon(), 5000);
 }
 
 void Window::eventsInfo(QString info)
@@ -534,18 +533,9 @@ void Window::createTrayIcon()
     trayIconMenu->addAction(aboutAction);
 
     trayIcon = new QSystemTrayIcon(this);
-    currentIconPath = new QString;
     changeTrayIcon(true, false);
 
-    QString iconPath;
-    if (QPalette().color(QPalette::WindowText).value() > QPalette().color(QPalette::Window).value()) {
-        // Dark theme.
-        iconPath = ":/images/onedrive-grey.png";
-    } else {
-        iconPath = ":/images/onedrive-blue.png";
-    }
-
-    trayIcon = new QSystemTrayIcon(QIcon(/*":/images/onedrive-blue.png"*/iconPath), this);
+    trayIcon = new QSystemTrayIcon(QIcon(":tray-icon-blue"), this);
 
     trayIcon->setContextMenu(trayIconMenu);
     trayIcon->show();
