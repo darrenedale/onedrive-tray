@@ -9,13 +9,13 @@
 #include <memory>
 #include <QApplication>
 #include <QTranslator>
+#include <QSystemTrayIcon>
 #include "IconStyle.h"
 #include "SyncState.h"
 
 #define oneDriveApp (dynamic_cast<OneDrive::Application *>(QApplication::instance()))
 
 QT_BEGIN_NAMESPACE
-class QSystemTrayIcon;
 class QMenu;
 class QAction;
 class QProcess;
@@ -60,8 +60,6 @@ namespace OneDrive
             showNotification(message, DefaultNotificationTimeout, type);
         }
 
-        void openLocalDirectory() const;
-
         inline QSystemTrayIcon & trayIcon() const
         {
             return *m_trayIcon;
@@ -72,18 +70,26 @@ namespace OneDrive
             return m_state;
         }
 
-        IconStyle iconStyle() const;
+        [[nodiscard]] IconStyle iconStyle() const;
         void setTrayIconStyle(IconStyle style);
 
         void loadSettings();
         void saveSettings() const;
 
-        const QString & oneDriveConfigFile() const;
+        [[nodiscard]] const QString & oneDriveConfigFile() const;
+
+        void suspendProcess();
+        void restartProcess();
+
+        void showWindow();
+        void hideWindow();
 
         void openLocalDirectory() const;
         int exec();
 
     Q_SIGNALS:
+        void processStopped();
+        void processStarted();
         void syncComplete();
         void localRootDirectoryRemoved();
         void freeSpaceUpdated(uint64_t bytes);
@@ -122,15 +128,16 @@ namespace OneDrive
             QString destination;
         };
 
-        static ProcessMessage parseProcessOutputLine(const QByteArray & line);
-
-        QString locateOneDriveConfigFile() const;
-
         static QString expandHomeShortcut(const QString & path);
 
+        void installTranslators();
+        QString locateOneDriveConfigFile() const;
+
+        void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
         void refreshTrayIcon();
         void createTrayIconMenu();
-        void installTranslators();
+
+        static ProcessMessage parseProcessOutputLine(const QByteArray & line);
         void readProcessOutput();
         void readProcessError();
 
@@ -143,6 +150,8 @@ namespace OneDrive
         std::unique_ptr<QMenu> m_trayIconMenu;
         std::unique_ptr<QAction> m_statusAction;
         std::unique_ptr<QAction> m_freeSpaceAction;
+        std::unique_ptr<QAction> m_suspendAction;
+        std::unique_ptr<QAction> m_restartAction;
         std::unique_ptr<QProcess> m_oneDriveProcess;
 
         QTranslator m_qtTranslator;

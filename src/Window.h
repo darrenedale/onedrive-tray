@@ -1,19 +1,15 @@
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef ONEDRIVETRAY_WINDOW_H
+#define ONEDRIVETRAY_WINDOW_H
 
-#include <QtWidgets/QSystemTrayIcon>
-#include <QtWidgets/QPlainTextEdit>
-#include <QtCore/QCoreApplication>
-#include <QtCore/QtCore>
+#include <QtCore/QSize>
+#include <QtCore/QPoint>
 #include <QtWidgets/QDialog>
-#include "IconStyle.h"
 
 QT_BEGIN_NAMESPACE
-class QAction;
-class QActionGroup;
+class QString;
 class QCheckBox;
 class QGroupBox;
-class QMenu;
+class QPlainTextEdit;
 QT_END_NAMESPACE
 
 namespace OneDrive
@@ -28,32 +24,21 @@ namespace OneDrive
     protected:
         void closeEvent(QCloseEvent * event) override;
 
-    private slots:
-
-        void iconActivated(QSystemTrayIcon::ActivationReason reason);
-
     private:
+        void connectProcess();
         void createIconGroupBox();
 
         void createMessageGroupBox();
 
-        void restart();
-
-        void suspend();
-
-        void refreshTrayIcon(bool forceChange, bool sync);
-
-        void quit();
-
         void loadSettings();
 
-        void saveSettings();
+        void saveSettings() const;
 
-        void eventsInfo(QString info);
+        void eventsInfo(const QString & info);
 
-        void eventsError(QString error);
+        void eventsError(const QString & error);
 
-        void eventsOperation(QString Operation, QString fileName);
+        void eventsOperation(const QString & Operation, const QString & fileName);
 
         struct WindowSettings
         {
@@ -61,18 +46,9 @@ namespace OneDrive
             QPoint pos;
         };
 
-        bool auto_hide;
-
         QCheckBox * showIconCheckBox;
-        QProcess * m_oneDriveProcess;
-
         QGroupBox * messageGroupBox;
         QPlainTextEdit * events;
-
-        QAction * statusAction;
-        QAction * restartAction;
-        QAction * suspendAction;
-
         WindowSettings m_settings;
     };
 }

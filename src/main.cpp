@@ -15,7 +15,7 @@ int main(int argc, char * argv[])
 
     try {
         Application app(argc, argv);
-        return Application::exec();
+        return app.exec();
     } catch (std::exception & err) {
         std::cerr << err.what() << "\n" << std::flush;
         return 1;

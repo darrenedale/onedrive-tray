@@ -7,6 +7,11 @@
 #include <QtCore/QLocale>
 #include <QtCore/QProcess>
 #include <QtCore/QCommandLineParser>
+#include <QtCore/QSettings>
+#include <QtCore/QLibraryInfo>
+#include <QtCore/QRegularExpression>
+#include <QtCore/QStandardPaths>
+#include <QtCore/QDir>
 #include <QtWidgets/QSystemTrayIcon>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
@@ -17,7 +22,7 @@ using namespace OneDrive;
 
 namespace
 {
-    static const QString DefaultOneDriveConfigFile = "/onedrive/config";
+    const QString DefaultOneDriveConfigFile = "/onedrive/config";
 }
 
 Application::Application(int & argc, char ** argv)
@@ -25,13 +30,15 @@ Application::Application(int & argc, char ** argv)
           m_state(SyncState::Idle),
           m_oneDrivePath(),
           m_oneDriveArgs(),
-          m_window(),
+          m_window(std::make_unique<Window>()),
           m_qtTranslator(),
           m_appTranslator(),
           m_trayIcon(std::make_unique<QSystemTrayIcon>()),
           m_trayIconMenu(std::make_unique<QMenu>()),
           m_statusAction(std::make_unique<QAction>(tr("Not started"))),
           m_freeSpaceAction(std::make_unique<QAction>(tr("Free space: "))),
+          m_suspendAction(std::make_unique<QAction>(tr("&Suspend synchronization"))),
+          m_restartAction(std::make_unique<QAction>(tr("&Restart synchronization"))),
           m_oneDriveProcess(std::make_unique<QProcess>())
 {
     setAttribute(Qt::AA_UseHighDpiPixmaps);
@@ -77,11 +84,33 @@ Application::Application(int & argc, char ** argv)
         m_oneDriveArgs = QLatin1String("--verbose --monitor");
     }
 
+    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardOutput, this, &Application::readProcessOutput);
+    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardError, this, &Application::readProcessError);
+
+    createTrayIconMenu();
+    connect(m_trayIcon.get(), &QSystemTrayIcon::activated, this, &Application::trayIconActivated);
+
     setQuitOnLastWindowClosed(false);
-    m_window = std::make_unique<Window>();
 }
 
-Application::~Application() noexcept = default;
+Application::~Application() noexcept
+{
+    m_oneDriveProcess->terminate();
+    int giveUp = 5;
+
+    while (QProcess::ProcessState::Running == m_oneDriveProcess->state() && 0 < giveUp) {
+        if (m_oneDriveProcess->waitForFinished(1000)) {
+            break;
+        }
+
+        std::cerr << "waited 1s for onedrive process to finish.\n";
+        --giveUp;
+    }
+
+    if (0 == giveUp) {
+        std::cerr << "onedrive process did not terminate cleanly.\n";
+    }
+}
 
 void Application::installTranslators()
 {
@@ -93,7 +122,24 @@ void Application::installTranslators()
     if (m_appTranslator.load(QLocale(), applicationName(), "_", applicationDirPath())) {
         installTranslator(&m_appTranslator);
     } else {
-        qDebug().noquote() << "Translation not found for" << QLocale::languageToString(QLocale().language()) << "language" << QLocale().uiLanguages() << ".";
+        std::cerr <<
+            "Translation not found for " <<
+            qPrintable(QLocale::languageToString(QLocale::system().language())) <<
+            " language (" <<
+            qPrintable(std::reduce(
+                    QLocale::system().uiLanguages().cbegin(),
+                    QLocale::system().uiLanguages().cend(),
+                    QString(),
+                    [](QString init, const QString & isoLanguage) -> QString {
+                        if (!init.isNull()) {
+                            init += ", ";
+                        }
+
+                        init += isoLanguage;
+                        return init;
+                    }
+            ))
+            << ")\n";
     }
 }
 
@@ -151,22 +197,26 @@ void Application::createTrayIconMenu()
     m_freeSpaceAction->setDisabled(true);
     m_statusAction->setDisabled(true);
 
-    auto * consoleAction = new QAction(tr("&Recent events"), this);
-    connect(consoleAction, &QAction::triggered, m_window.get(), &QWidget::showNormal);
+    m_trayIconMenu->addAction(m_freeSpaceAction.get());
+    m_trayIconMenu->addAction(m_statusAction.get());
+    m_trayIconMenu->addSeparator();
 
-    auto * openLocalDirectory = new QAction(tr("&Open OneDrive folder"), this);
-    connect(openLocalDirectory, &QAction::triggered, this, &Application::openLocalDirectory);
+    auto * action = new QAction(tr("&Recent events"), this);
+    connect(action, &QAction::triggered, m_window.get(), &QWidget::showNormal);
+    m_trayIconMenu->addAction(action);
 
-    auto * restartAction = new QAction(tr("&Restart the synchronization"), this);
-    connect(restartAction, &QAction::triggered, this, &Application::restart);
-    restartAction->setVisible(false);
+    action = new QAction(tr("&Open OneDrive folder"), this);
+    connect(action, &QAction::triggered, this, &Application::openLocalDirectory);
+    m_trayIconMenu->addAction(action);
 
-    auto * suspendAction = new QAction(tr("&Suspend the synchronization"), this);
-    connect(suspendAction, &QAction::triggered, this, &Application::suspend);
+    connect(m_restartAction.get(), &QAction::triggered, this, &Application::restartProcess);
+    m_restartAction->setVisible(false);
+
+    connect(m_suspendAction.get(), &QAction::triggered, this, &Application::suspendProcess);
 
     auto * iconColorGroup = new QActionGroup(this);
 
-    auto * action = iconColorGroup->addAction(QIcon(":/tray-icon-mono"), tr("Monochrome"));
+    action = iconColorGroup->addAction(QIcon(":/tray-icon-mono"), tr("Monochrome"));
     action->setCheckable(true);
     action->setChecked(IconStyle::colourful == settings.iconStyle);
 
@@ -182,35 +232,26 @@ void Application::createTrayIconMenu()
         setTrayIconStyle(IconStyle::colourful);
     });
 
-    auto * quitAction = new QAction(tr("&Quit OneDrive"), this);
-    connect(quitAction, &QAction::triggered, this, &Application::quit);
-
-    auto * aboutAction = new QAction(tr("&About OneDrive"), this);
-    connect(aboutAction, &QAction::triggered, this, &Application::showAboutDialogue);
-
-    m_trayIconMenu->addAction(m_freeSpaceAction.get());
-    m_trayIconMenu->addAction(m_statusAction.get());
     m_trayIconMenu->addSeparator();
 
-    m_trayIconMenu->addAction(consoleAction);
-    m_trayIconMenu->addAction(openLocalDirectory);
-    m_trayIconMenu->addAction(restartAction);
-    m_trayIconMenu->addAction(suspendAction);
-    m_trayIconMenu->addSeparator();
-
-    QMenu * submenuColor = m_trayIconMenu->addMenu(tr("Icon style"));
+    auto * submenuColor = m_trayIconMenu->addMenu(tr("Icon style"));
     submenuColor->addActions(iconColorGroup->actions());
 
     m_trayIconMenu->addSeparator();
-    m_trayIconMenu->addAction(quitAction);
-    m_trayIconMenu->addAction(aboutAction);
+    m_trayIconMenu->addAction(m_restartAction.get());
+    m_trayIconMenu->addAction(m_suspendAction.get());
 
-    refreshTrayIcon();
+    m_trayIconMenu->addSeparator();
+    action = new QAction(tr("&About OneDrive"), this);
+    connect(action, &QAction::triggered, this, &Application::showAboutDialogue);
+    m_trayIconMenu->addAction(action);
+
+    action = new QAction(tr("&Quit OneDrive"), this);
+    connect(action, &QAction::triggered, this, &Application::quit);
+    m_trayIconMenu->addAction(action);
 
     m_trayIcon->setContextMenu(m_trayIconMenu.get());
-    m_trayIcon->show();
-
-    connect(m_trayIcon.get(), &QSystemTrayIcon::activated, this, &Application::trayIconActivated);
+    refreshTrayIcon();
 }
 
 void Application::setTrayIconStyle(IconStyle style)
@@ -331,9 +372,10 @@ int Application::exec()
     m_oneDriveProcess->setProgram(oneDrivePath());
     m_oneDriveProcess->setArguments(oneDriveArgs().split(' ', Qt::SkipEmptyParts));
 
-    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardOutput, this, &Application::readProcessOutput);
-    connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardError, this, &Application::readProcessError);
+    m_trayIcon->show();
+    refreshTrayIcon();
     m_oneDriveProcess->start();
+
     return QApplication::exec();
 }
 
@@ -500,4 +542,64 @@ QString Application::expandHomeShortcut(const QString & path)
     }
 
     return path;
+}
+
+void Application::suspendProcess()
+{
+    m_oneDriveProcess->terminate(); // Kill m_oneDriveProcess.
+    m_oneDriveProcess->waitForFinished(); // Wait for m_oneDriveProcess finish
+    m_restartAction->setVisible(true);
+    m_suspendAction->setVisible(false);
+    refreshTrayIcon();
+
+    m_statusAction->setText(tr("Synchronization suspended"));
+    Q_EMIT processStopped();
+}
+
+void Application::restartProcess()
+{
+    m_oneDriveProcess->start(); // Start the m_oneDriveProcess.
+    m_suspendAction->setVisible(true);
+    m_restartAction->setVisible(false);
+    Q_EMIT processStarted();
+}
+
+void Application::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
+{
+    switch (reason) {
+        case QSystemTrayIcon::Context:
+        case QSystemTrayIcon::Unknown:
+            break;
+
+        case QSystemTrayIcon::Trigger:
+        case QSystemTrayIcon::DoubleClick:
+            if (m_window->isVisible()) {
+                showWindow();
+            } else {
+                hideWindow();
+            }
+            break;
+
+        case QSystemTrayIcon::MiddleClick:
+            qint64 pid = m_oneDriveProcess->processId();
+
+            if (pid > 0) {
+                showNotification(tr("OneDrive is running with the PID %1.").arg(pid));
+            } else {
+                showNotification(tr("OneDrive is not running by some reason. Please restart the program."));
+            }
+            break;
+    }
+}
+
+void Application::showWindow()
+{
+    m_window->setVisible(true);
+    m_window->activateWindow();
+    m_window->raise();
+}
+
+void Application::hideWindow()
+{
+    m_window->hide();
 }
