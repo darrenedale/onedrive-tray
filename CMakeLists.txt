@@ -12,7 +12,7 @@ find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
 add_executable(
         onedrive-tray
         src/main.cpp
-        src/Window.cpp
+        src/MessagesWindow.cpp
         resources/systray.qrc
         src/Application.cpp src/Application.h
 )

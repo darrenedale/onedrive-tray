@@ -1,5 +1,5 @@
-#ifndef ONEDRIVETRAY_WINDOW_H
-#define ONEDRIVETRAY_WINDOW_H
+#ifndef ONEDRIVETRAY_MESSAGESWINDOW_H
+#define ONEDRIVETRAY_MESSAGESWINDOW_H
 
 #include <QtCore/QSize>
 #include <QtCore/QPoint>
@@ -7,26 +7,25 @@
 
 QT_BEGIN_NAMESPACE
 class QString;
-class QCheckBox;
 class QGroupBox;
 class QPlainTextEdit;
 QT_END_NAMESPACE
 
 namespace OneDrive
 {
-    class Window : public QDialog
+    class MessagesWindow : public QDialog
     {
     Q_OBJECT
 
     public:
-        Window();
+        MessagesWindow();
+        ~MessagesWindow() override;
 
     protected:
         void closeEvent(QCloseEvent * event) override;
 
     private:
         void connectProcess();
-        void createIconGroupBox();
 
         void createMessageGroupBox();
 
@@ -34,11 +33,11 @@ namespace OneDrive
 
         void saveSettings() const;
 
-        void eventsInfo(const QString & info);
+        void addInfoMessage(const QString & info);
 
-        void eventsError(const QString & error);
+        void addErrorMessage(const QString & error);
 
-        void eventsOperation(const QString & Operation, const QString & fileName);
+        void addOperationMessage(const QString & Operation, const QString & fileName);
 
         struct WindowSettings
         {
@@ -46,9 +45,8 @@ namespace OneDrive
             QPoint pos;
         };
 
-        QCheckBox * showIconCheckBox;
-        QGroupBox * messageGroupBox;
-        QPlainTextEdit * events;
+        QGroupBox * m_messagesContainer;
+        QPlainTextEdit * m_eventsList;
         WindowSettings m_settings;
     };
 }

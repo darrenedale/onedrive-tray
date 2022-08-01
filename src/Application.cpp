@@ -16,7 +16,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
 #include "Application.h"
-#include "Window.h"
+#include "MessagesWindow.h"
 
 using namespace OneDrive;
 
@@ -30,10 +30,10 @@ Application::Application(int & argc, char ** argv)
           m_state(SyncState::Idle),
           m_oneDrivePath(),
           m_oneDriveArgs(),
-          m_window(std::make_unique<Window>()),
+          m_window(std::make_unique<MessagesWindow>()),
           m_qtTranslator(),
           m_appTranslator(),
-          m_trayIcon(std::make_unique<QSystemTrayIcon>()),
+          m_trayIcon(nullptr),
           m_trayIconMenu(std::make_unique<QMenu>()),
           m_statusAction(std::make_unique<QAction>(tr("Not started"))),
           m_freeSpaceAction(std::make_unique<QAction>(tr("Free space: "))),
@@ -73,6 +73,7 @@ Application::Application(int & argc, char ** argv)
         throw RuntimeException("No system tray.");
     }
 
+    loadSettings();
     m_oneDrivePath = parser.value(onedrivePathOption);
     m_oneDriveArgs = parser.value(onedriveArgsOption);
 
@@ -88,6 +89,9 @@ Application::Application(int & argc, char ** argv)
     connect(m_oneDriveProcess.get(), &QProcess::readyReadStandardError, this, &Application::readProcessError);
 
     createTrayIconMenu();
+    m_trayIcon = std::make_unique<QSystemTrayIcon>(QIcon(":/tray-icon-mono"));
+    m_trayIcon->setContextMenu(m_trayIconMenu.get());
+//    refreshTrayIcon();
     connect(m_trayIcon.get(), &QSystemTrayIcon::activated, this, &Application::trayIconActivated);
 
     setQuitOnLastWindowClosed(false);
@@ -201,7 +205,7 @@ void Application::createTrayIconMenu()
     m_trayIconMenu->addAction(m_statusAction.get());
     m_trayIconMenu->addSeparator();
 
-    auto * action = new QAction(tr("&Recent events"), this);
+    auto * action = new QAction(tr("&Recent m_eventsList"), this);
     connect(action, &QAction::triggered, m_window.get(), &QWidget::showNormal);
     m_trayIconMenu->addAction(action);
 
@@ -249,9 +253,6 @@ void Application::createTrayIconMenu()
     action = new QAction(tr("&Quit OneDrive"), this);
     connect(action, &QAction::triggered, this, &Application::quit);
     m_trayIconMenu->addAction(action);
-
-    m_trayIcon->setContextMenu(m_trayIconMenu.get());
-    refreshTrayIcon();
 }
 
 void Application::setTrayIconStyle(IconStyle style)
@@ -450,12 +451,6 @@ void Application::readProcessOutput()
 {
     static QByteArray buffer;
 
-    if (SyncState::Syncing != state()) {
-        m_state = SyncState::Syncing;
-        m_statusAction->setText(tr("Synchronizing..."));
-        refreshTrayIcon();
-    }
-
     buffer += m_oneDriveProcess->readAllStandardOutput();
 
     for (const QByteArray & line : buffer.split('\n')) {
@@ -463,6 +458,7 @@ void Application::readProcessOutput()
 
         switch (message.type) {
             case ProcessMessageType::Unknown:
+                m_state = SyncState::Idle;
                 break;
 
             case ProcessMessageType::FreeSpace:
@@ -489,30 +485,38 @@ void Application::readProcessOutput()
                 break;
 
             case ProcessMessageType::CreateLocalDir:
+                m_state = SyncState::Syncing;
                 m_statusAction->setText(tr("Local directory %1 created").arg(message.destination));
                 Q_EMIT localDirectoryCreated(message.destination);
                 break;
 
             case ProcessMessageType::CreateRemoteDir:
+                m_state = SyncState::Syncing;
                 m_statusAction->setText(tr("Remote directory %1 created").arg(message.destination));
                 Q_EMIT remoteDirectoryCreated(message.destination);
                 break;
 
             case ProcessMessageType::Delete:
+                m_state = SyncState::Syncing;
                 m_statusAction->setText(tr("File %1 deleted").arg(message.destination));
                 Q_EMIT fileDeleted(message.destination);
                 break;
 
             case ProcessMessageType::Rename:
+                m_state = SyncState::Syncing;
                 m_statusAction->setText(tr("File %1 renamed as %2").arg( message.source, message.destination));
                 Q_EMIT fileRenamed(message.source, message.destination);
                 break;
 
             case ProcessMessageType::Upload:
+                m_state = SyncState::Syncing;
+                m_statusAction->setText(tr("Synchronizing..."));
                 Q_EMIT fileUploaded(message.destination);
                 break;
 
             case ProcessMessageType::Download:
+                m_state = SyncState::Syncing;
+                m_statusAction->setText(tr("Synchronizing..."));
                 Q_EMIT fileDownloaded(message.destination);
                 break;
         }
@@ -528,7 +532,7 @@ void Application::readProcessOutput()
 void Application::readProcessError()
 {
 //    QByteArray strdata = m_oneDriveProcess->readAllStandardError();
-//    eventsError(QString(strdata));
+//    addErrorMessage(QString(strdata));
 }
 
 QString Application::expandHomeShortcut(const QString & path)
