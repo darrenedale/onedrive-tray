@@ -3,6 +3,7 @@
         <file alias="window-icon">../images/OneDrive.svg</file>
         <file alias="tray-icon-colour">../images/OneDrive-64.png</file>
         <file alias="tray-icon-mono">../images/OneDriveMono-64.png</file>
-        <file alias="tray-icon-sync">../images/OneDrive-sync.png</file>
+        <file alias="tray-icon-sync-mono">../images/OneDrive-sync.png</file>
+        <file alias="tray-icon-sync-colour">../images/OneDrive-sync.png</file>
     </qresource>
 </RCC>
