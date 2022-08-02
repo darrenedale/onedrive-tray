@@ -14,7 +14,8 @@ add_executable(
         src/main.cpp
         src/MessagesWindow.cpp
         resources/systray.qrc
-        src/Application.cpp src/Application.h
+        src/Application.cpp
+        src/Process.cpp
 )
 
 target_link_libraries(
