@@ -1,3 +1,9 @@
+/**
+ * MessagesWindow.h
+ *
+ * Declaration of MessagesWindow class.
+ */
+
 #ifndef ONEDRIVETRAY_MESSAGESWINDOW_H
 #define ONEDRIVETRAY_MESSAGESWINDOW_H
 
@@ -13,12 +19,14 @@ QT_END_NAMESPACE
 
 namespace OneDrive
 {
+    class Process;
+
     class MessagesWindow : public QDialog
     {
     Q_OBJECT
 
     public:
-        MessagesWindow();
+        MessagesWindow(const Process & process);
         ~MessagesWindow() override;
 
     protected:
@@ -45,6 +53,7 @@ namespace OneDrive
             QPoint pos;
         };
 
+        const Process & m_process;
         QGroupBox * m_messagesContainer;
         QPlainTextEdit * m_eventsList;
         WindowSettings m_settings;

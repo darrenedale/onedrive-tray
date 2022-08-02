@@ -1,3 +1,8 @@
+/**
+ * MessagesWindow.cpp
+ *
+ * Implementation of MessagesWindow class.
+ */
 
 #include <stdexcept>
 #include <QtCore/QDateTime>
@@ -7,9 +12,7 @@
 #include <QtGui/QCloseEvent>
 #include <QtCore/QDebug>
 #include <QtWidgets/QGroupBox>
-#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
-#include <QtWidgets/QMenu>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QVBoxLayout>
 #include "MessagesWindow.h"
@@ -17,8 +20,9 @@
 
 using namespace OneDrive;
 
-MessagesWindow::MessagesWindow()
+MessagesWindow::MessagesWindow(const Process & process)
 : QDialog(),
+  m_process(process),
   m_messagesContainer(nullptr),
   m_eventsList(nullptr)
 {
@@ -57,51 +61,51 @@ void MessagesWindow::closeEvent(QCloseEvent * event)
 
 void MessagesWindow::connectProcess()
 {
-    connect(oneDriveApp, &Application::processStarted, [this]() {
+    connect(&m_process, &Process::started, [this] () {
         addInfoMessage(tr("Synchronization restarted"));
     });
 
-    connect(oneDriveApp, &Application::syncComplete, [this]() {
+    connect(&m_process, &Process::synchronisationComplete, [this]( ) {
         addInfoMessage(tr("Synchronisation completed"));
     });
 
-    connect(oneDriveApp, &Application::localRootDirectoryRemoved, [this]() {
+    connect(&m_process, &Process::localRootDirectoryRemoved, [this] () {
         addInfoMessage(tr("The local synchronisation directory was not found"));
     });
 
-    connect(oneDriveApp, &Application::freeSpaceUpdated, [this](uint64_t bytes) {
+    connect(&m_process, &Process::freeSpaceUpdated, [this] (uint64_t bytes) {
         addInfoMessage(tr("Free space updated to %1 bytes").arg(bytes));
     });
 
-    connect(oneDriveApp, &Application::processStopped, [this]() {
+    connect(&m_process, &Process::stopped, [this] () {
         addInfoMessage(tr("Synchronization suspended"));
     });
 
-    connect(oneDriveApp, &Application::fileDeleted, [this](const QString & fileName) {
+    connect(&m_process, &Process::fileDeleted, [this] (const QString & fileName) {
         addOperationMessage(tr("Deleted"), fileName);
     });
 
-    connect(oneDriveApp, &Application::fileRenamed, [this](const QString & from, const QString & to) {
+    connect(&m_process, &Process::fileRenamed, [this] (const QString & from, const QString & to) {
         addOperationMessage(tr("Renamed"), tr("'%1' to '%2'").arg(from, to));
     });
 
-    connect(oneDriveApp, &Application::fileUploaded, [this](const QString & fileName) {
+    connect(&m_process, &Process::fileUploaded, [this] (const QString & fileName) {
         addOperationMessage(tr("Uploaded"), fileName);
     });
 
-    connect(oneDriveApp, &Application::fileDownloaded, [this](const QString & fileName) {
+    connect(&m_process, &Process::fileDownloaded, [this] (const QString & fileName) {
         addOperationMessage(tr("Downloaded"), fileName);
     });
 
-    connect(oneDriveApp, &Application::localDirectoryCreated, [this](const QString & dirName) {
+    connect(&m_process, &Process::localDirectoryCreated, [this] (const QString & dirName) {
         addOperationMessage(tr("Local directory created"), dirName);
     });
 
-    connect(oneDriveApp, &Application::remoteDirectoryCreated, [this](const QString & dirName) {
+    connect(&m_process, &Process::remoteDirectoryCreated, [this] (const QString & dirName) {
         addOperationMessage(tr("Remote directory created"), dirName);
     });
 
-    connect(oneDriveApp, &Application::fileDownloaded, [this](const QString & fileName) {
+    connect(&m_process, &Process::fileDownloaded, [this] (const QString & fileName) {
         addOperationMessage(tr("Downloaded"), fileName);
     });
 }
