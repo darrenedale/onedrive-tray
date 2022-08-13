@@ -16,7 +16,9 @@ add_executable(
         resources/systray.qrc
         src/Application.cpp
         src/Process.cpp
-)
+        src/SettingsWidget.cpp
+        src/SettingsWindow.cpp
+        src/Settings.cpp)
 
 target_link_libraries(
         onedrive-tray

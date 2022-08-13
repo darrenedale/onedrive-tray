@@ -15,8 +15,10 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QAction>
 #include "IconStyle.h"
+#include "Settings.h"
 #include "Process.h"
 #include "MessagesWindow.h"
+#include "SettingsWindow.h"
 
 #define oneDriveApp (dynamic_cast<OneDrive::Application *>(QApplication::instance()))
 
@@ -27,6 +29,7 @@ QT_END_NAMESPACE
 
 namespace OneDrive
 {
+    class SettingsWindow;
     using RuntimeException = std::runtime_error;
 
     /**
@@ -81,6 +84,9 @@ namespace OneDrive
 
         /** Show the application about dialogue. */
         static void showAboutDialogue();
+
+        /** Show the application settings dialogue. */
+        void showSettingsWindow();
 
         /**
          * Show a notification to the user.
@@ -150,10 +156,15 @@ namespace OneDrive
             return m_oneDriveProcess;
         }
 
+        [[nodiscard]] inline const Settings & settings() const
+        {
+            return m_settings;
+        }
+
         /** Fetch the user's preferred icon style. */
         [[nodiscard]] IconStyle trayIconStyle() const
         {
-            return m_settings.iconStyle;
+            return settings().iconStyle();
         }
 
         /** Set the user's preferred icon style. */
@@ -227,11 +238,6 @@ namespace OneDrive
         void onFileDownloaded(const QString & fileName);
 
     private:
-        /** Data structure for the application m_settings. */
-        struct Settings
-        {
-            IconStyle iconStyle = IconStyle::colourful;
-        };
 
         /**
          * Helper to expand ~ and $HOME in a path to the full home path.
@@ -278,7 +284,10 @@ namespace OneDrive
         Process m_oneDriveProcess;
 
         /** The messages window. */
-        MessagesWindow m_window;
+        MessagesWindow m_messagesWindow;
+
+        /** The messages window. */
+        std::optional<SettingsWindow> m_settingsWindow;
 
         /** The tray icon. */
         QSystemTrayIcon m_trayIcon;

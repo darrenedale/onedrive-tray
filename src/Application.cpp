@@ -18,6 +18,7 @@
 #include <QtWidgets/QMenu>
 #include "Application.h"
 #include "Process.h"
+#include "SettingsWidget.h"
 
 using namespace OneDrive;
 
@@ -35,7 +36,7 @@ Application::Application(int & argc, char ** argv)
           m_oneDrivePath(),
           m_oneDriveArguments(FixedOneDriveArguments),
           m_oneDriveProcess(),
-          m_window(m_oneDriveProcess),
+          m_messagesWindow(m_oneDriveProcess),
           m_trayIcon(QIcon(DefaultIcon)),
           m_trayIconMenu(),
           m_statusAction(tr("Not started")),
@@ -218,6 +219,32 @@ void Application::showAboutDialogue()
 }
 
 
+void Application::showSettingsWindow()
+{
+    if (!m_settingsWindow) {
+        m_settingsWindow.emplace(settings());
+        auto * settingsWidget = m_settingsWindow->settingsWidget();
+
+        connect(settingsWidget, &SettingsWidget::changed, [this]() {
+            auto * settingsWidget = m_settingsWindow->settingsWidget();
+            m_settings.setStartOwnOneDrive(settingsWidget->startOwnOneDrive());
+            m_settings.setUseCustomOneDrive(settingsWidget->useCustomOneDrive());
+            m_settings.setCustomOneDrivePath(settingsWidget->customOneDrivePath().toStdString());
+            m_settings.setUseCustomSocket(settingsWidget->useCustomSocket());
+            m_settings.setCustomSocketPath(settingsWidget->customSocketPath().toStdString());
+            m_settings.setUseCustomSocket(settingsWidget->useCustomSocket());
+            m_settings.setUseCustomSocket(settingsWidget->useCustomSocket());
+            m_settings.setUseCustomSocket(settingsWidget->useCustomSocket());
+            saveSettings();
+        });
+    }
+
+    m_settingsWindow->show();
+    m_settingsWindow->raise();
+    m_settingsWindow->activateWindow();
+}
+
+
 void Application::setupTrayIconMenu()
 {
     // these are just labels, they're not really actions
@@ -230,7 +257,7 @@ void Application::setupTrayIconMenu()
     m_trayIconMenu.addSeparator();
 
     auto * action = new QAction(tr("&Recent events"), this);
-    connect(action, &QAction::triggered, &m_window, &QWidget::showNormal);
+    connect(action, &QAction::triggered, &m_messagesWindow, &QWidget::showNormal);
     m_trayIconMenu.addAction(action);
 
     action = new QAction(tr("&Open OneDrive folder"), this);
@@ -256,7 +283,7 @@ void Application::setupTrayIconMenu()
 
     action = iconColorGroup->addAction(QIcon(":/tray-icon-mono"), tr("Monochrome"));
     action->setCheckable(true);
-    action->setChecked(IconStyle::colourful == m_settings.iconStyle);
+    action->setChecked(IconStyle::colourful == settings().iconStyle());
 
     connect(action, &QAction::triggered,[this] {
         setTrayIconStyle(IconStyle::monochrome);
@@ -264,7 +291,7 @@ void Application::setupTrayIconMenu()
 
     action = iconColorGroup->addAction(QIcon(":/tray-icon-colour"), tr("Colourful"));
     action->setCheckable(true);
-    action->setChecked(IconStyle::colourful == m_settings.iconStyle);
+    action->setChecked(IconStyle::colourful == settings().iconStyle());
 
     connect(action, &QAction::triggered,[this] {
         setTrayIconStyle(IconStyle::colourful);
@@ -282,6 +309,10 @@ void Application::setupTrayIconMenu()
 
     m_trayIconMenu.addSeparator();
 
+    action = new QAction(tr("&Settings"), this);
+    connect(action, &QAction::triggered, this, &Application::showSettingsWindow);
+    m_trayIconMenu.addAction(action);
+
     action = new QAction(tr("&About OneDrive"), this);
     connect(action, &QAction::triggered, this, &Application::showAboutDialogue);
     m_trayIconMenu.addAction(action);
@@ -295,7 +326,7 @@ void Application::setupTrayIconMenu()
 
 void Application::setTrayIconStyle(IconStyle style)
 {
-    m_settings.iconStyle = style;
+    m_settings.setIconStyle(style);
     saveSettings();
     refreshTrayIcon();
 }
@@ -305,7 +336,12 @@ void Application::saveSettings() const
 {
     QSettings settingsStore;
     settingsStore.beginGroup(QLatin1String("Application"));
-    settingsStore.setValue("iconStyle", static_cast<int>(m_settings.iconStyle));
+    settingsStore.setValue("iconStyle", static_cast<int>(m_settings.iconStyle()));
+    settingsStore.setValue("startOwnOneDrive", m_settings.startOwnOneDrive());
+    settingsStore.setValue("useCustomOneDrive", m_settings.useCustomOneDrive());
+    settingsStore.setValue("customOneDrivePath", QString::fromStdString(m_settings.customOneDrivePath()));
+    settingsStore.setValue("useCustomSocket", m_settings.useCustomSocket());
+    settingsStore.setValue("customSocketPath", QString::fromStdString(m_settings.customSocketPath()));
     settingsStore.endGroup();
 }
 
@@ -320,14 +356,19 @@ void Application::loadSettings()
             std::cerr << "unexpected icon style " << settingsStore.value("iconStyle", 0).value<int>() << " in m_settings file - defaulting to 'colourful'\n";
             [[fallthrough]];
         case static_cast<int>(IconStyle::colourful):
-            m_settings.iconStyle = IconStyle::colourful;
+            m_settings.setIconStyle(IconStyle::colourful);
             break;
 
         case static_cast<int>(IconStyle::monochrome):
-            m_settings.iconStyle = IconStyle::monochrome;
+            m_settings.setIconStyle(IconStyle::monochrome);
             break;
     }
 
+    m_settings.setStartOwnOneDrive(settingsStore.value("startOwnOneDrive", true).value<bool>());
+    m_settings.setUseCustomOneDrive(settingsStore.value("useCustomOneDrive", true).value<bool>());
+    m_settings.setCustomOneDrivePath(settingsStore.value("customOneDrivePath", "").value<QString>().toStdString());
+    m_settings.setUseCustomSocket(settingsStore.value("useCustomSocket", true).value<bool>());
+    m_settings.setCustomSocketPath(settingsStore.value("customSocketPath", "").value<QString>().toStdString());
     settingsStore.endGroup();
 }
 
@@ -350,7 +391,7 @@ void Application::refreshTrayIcon()
             throw std::logic_error("Unhandled sync state in Application::refreshTrayIcon()");
     }
 
-    switch (m_settings.iconStyle) {
+    switch (m_settings.iconStyle()) {
         case IconStyle::colourful:
             iconName += "-colour";
             break;
@@ -442,7 +483,7 @@ void Application::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
         case QSystemTrayIcon::Trigger:
         case QSystemTrayIcon::DoubleClick:
-            if (m_window.isVisible()) {
+            if (m_messagesWindow.isVisible()) {
                 showWindow();
             } else {
                 hideWindow();
@@ -462,15 +503,15 @@ void Application::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void Application::showWindow()
 {
-    m_window.setVisible(true);
-    m_window.activateWindow();
-    m_window.raise();
+    m_messagesWindow.setVisible(true);
+    m_messagesWindow.activateWindow();
+    m_messagesWindow.raise();
 }
 
 
 void Application::hideWindow()
 {
-    m_window.hide();
+    m_messagesWindow.hide();
 }
 
 

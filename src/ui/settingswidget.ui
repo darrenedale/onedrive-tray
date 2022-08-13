@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsWidget</class>
+ <widget class="QWidget" name="SettingsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <item>
+    <widget class="QRadioButton" name="startOwnOneDrive">
+     <property name="text">
+      <string>Start our own onedrive client</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">oneDriveProcess</string>
+     </attribute>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="customOneDriveLayout">
+     <property name="leftMargin">
+      <number>30</number>
+     </property>
+     <item>
+      <widget class="QCheckBox" name="useCustomOneDrive">
+       <property name="text">
+        <string>Custom executable</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="customOneDrivePath">
+       <property name="placeholderText">
+        <string>Path to onedrive...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="chooseCustomOneDrivePath">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset theme="document-open">
+         <normaloff>.</normaloff>.</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QRadioButton" name="connectToExistingOneDrive">
+     <property name="text">
+      <string>Connect to existing onedrive client</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">oneDriveProcess</string>
+     </attribute>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="customSocketLayout">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QCheckBox" name="useCustomSocket">
+       <property name="text">
+        <string>Custom socket</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="customSocketPath">
+       <property name="toolTip">
+        <string>Use this if onedrive is already running and is not using the default socket path, or if you want to start our own instance of onedrive with a custom socket path.</string>
+       </property>
+       <property name="placeholderText">
+        <string>Path to socket...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="chooseCustomSocketPath">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset theme="document-open">
+         <normaloff>.</normaloff>.</iconset>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer name="mainSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="oneDriveProcess"/>
+ </buttongroups>
+</ui>
